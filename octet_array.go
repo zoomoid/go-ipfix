@@ -98,14 +98,14 @@ func (*OctetArray) IsReducedLength() bool {
 	return false
 }
 
-func (t *OctetArray) Decode(in io.Reader) error {
+func (t *OctetArray) Decode(in io.Reader) (n int, err error) {
 	b := make([]byte, t.Length())
-	_, err := in.Read(b)
+	n, err = in.Read(b)
 	if err != nil {
-		return fmt.Errorf("failed to read data in %T, %w", t, err)
+		return n, fmt.Errorf("failed to read data in %T, %w", t, err)
 	}
 	t.value = b
-	return nil
+	return
 }
 
 func (t *OctetArray) Encode(w io.Writer) (int, error) {

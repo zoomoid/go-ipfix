@@ -31,6 +31,16 @@ var (
 	penMask = uint16(0x8000)
 )
 
+// BasicList implements the basicList abstract data type as per RFC 6313.
+// Note that the structured data types described in RFC 6313 require state:
+// during decoding, the *Field ID* in the header of the data type is looked up
+// to map the data semantics to other IPFIX abstract data types (read: what type of data
+// the list contains).
+//
+// For this, go-ipfix uses its abstraction of Caches, here a FieldCache, to look up this state
+// during decoding. This abstraction allows you to add new field types and information elements
+// during runtime. For more information, see the Cache documentation or the general workflow using
+// go-ipfix.
 type BasicList struct {
 	isVariableLength bool
 
@@ -63,6 +73,10 @@ func NewBasicList() DataType {
 	}
 }
 
+// WithManager is a decorator for a BasicList that returns a new constructor function for new basic lists
+// with a given FieldCache injected into the BasicList object.
+// This injection is prominently used in the FieldBuilder, which *should* be used by users instead of
+// instantiating the BasicList directly.
 func (t *BasicList) WithManager(mgr FieldCache) DataTypeConstructor {
 	return func() DataType {
 		return &BasicList{
@@ -72,6 +86,9 @@ func (t *BasicList) WithManager(mgr FieldCache) DataTypeConstructor {
 	}
 }
 
+// String converts a basic list to a string similar to Go's formating of slices.
+// A stringified basicList is "[ value_1, value_2, ... ]" where value_1 etc. are the string
+// representations of the contents of the basic list.
 func (t *BasicList) String() string {
 	if t.value == nil {
 		return "nil"
@@ -83,10 +100,13 @@ func (t *BasicList) String() string {
 	return "[" + strings.Join(s, " ") + "]"
 }
 
+// Type returns "basicList" indicating the data type, e.g., for serialization
 func (*BasicList) Type() string {
 	return "basicList"
 }
 
+// Value returns the internal value of the BasicList object as a type-assertable interface.
+// This is prominently used during JSON serialization.
 func (t *BasicList) Value() interface{} {
 	return t.value
 }
@@ -154,10 +174,15 @@ func (t *BasicList) Clone() DataType {
 	}
 }
 
+// DefaultLength implements DataType's DefaultLength method, which for basic lists, is statically 0.
 func (*BasicList) DefaultLength() uint16 {
 	return 0
 }
 
+// WithLength implements DataType's WithLength decorator method that injects a
+// static length into the constructed BasicList object.
+// This is used in FieldBuilder, which should be used by users, rather than
+// instantiating the BasicList directly.
 func (t *BasicList) WithLength(length uint16) DataTypeConstructor {
 	return func() DataType {
 		return &BasicList{
@@ -175,27 +200,29 @@ func (t *BasicList) IsReducedLength() bool {
 	return false
 }
 
-func (t *BasicList) Decode(r io.Reader) error {
-	var err error
+func (t *BasicList) Decode(r io.Reader) (n int, err error) {
 	var fieldId uint16
-	var sematic ListSemantic
 	var enterpriseId uint32
 	var reverse bool
 	// basicList is at least 5 bytes = semantic (1 byte) + field Id (2 byte) + element length (2 byte)
 	// which, in case of enterprise-specific IEs, may also be 9 = 5 + pen (4 bytes)
 	var headerLength uint16 = basicListMinimumHeaderLength
 
-	err = binary.Read(r, binary.BigEndian, &sematic)
+	b := make([]byte, 1)
+	m, err := r.Read(b)
+	n += m
 	if err != nil {
-		return fmt.Errorf("failed to read list semantic in %T, %w", t, err)
+		return n, fmt.Errorf("failed to read list semantic in %T, %w", t, err)
 	}
-	t.semantic = sematic
+	t.semantic = ListSemantic(uint8(b[0]))
 
-	var rawFieldId uint16
-	err = binary.Read(r, binary.BigEndian, &rawFieldId)
+	b = make([]byte, 2)
+	m, err = r.Read(b)
+	n += m
 	if err != nil {
-		return fmt.Errorf("failed to read field id in %T, %w", t, err)
+		return n, fmt.Errorf("failed to read field id in %T, %w", t, err)
 	}
+	rawFieldId := binary.BigEndian.Uint16(b)
 
 	// mask the first bit which indicates a private enterprise field
 	fieldId = (^penMask) & rawFieldId
@@ -206,16 +233,24 @@ func (t *BasicList) Decode(r io.Reader) error {
 		t.isEnterprise = true
 	}
 
-	err = binary.Read(r, binary.BigEndian, &t.elementLength)
+	b = make([]byte, 2)
+	m, err = r.Read(b)
+	n += m
 	if err != nil {
-		return fmt.Errorf("failed to read element length in %T, %w", t, err)
+		return n, fmt.Errorf("failed to read element length in %T, %w", t, err)
 	}
+	t.elementLength = binary.BigEndian.Uint16(b)
 
 	if t.isEnterprise {
-		err = binary.Read(r, binary.BigEndian, &enterpriseId)
+		b = make([]byte, 4)
+		m, err = r.Read(b)
+		n += m
 		if err != nil {
-			return fmt.Errorf("failed to read pen in %T, %w", t, err)
+			return n, fmt.Errorf("failed to read pen in %T, %w", t, err)
 		}
+
+		enterpriseId = binary.BigEndian.Uint32(b)
+
 		t.pen = enterpriseId
 		if enterpriseId == ReversePEN && Reversible(fieldId) {
 			reverse = true
@@ -226,20 +261,20 @@ func (t *BasicList) Decode(r io.Reader) error {
 		headerLength += 4
 	}
 
-	fieldBuilder, err := t.fieldManager.Get(context.TODO(), NewFieldKey(enterpriseId, fieldId))
+	fieldBuilder, err := t.fieldManager.GetBuilder(context.TODO(), NewFieldKey(enterpriseId, fieldId))
 	if err != nil {
-		return fmt.Errorf("failed to get field (%d,%d) from manager in %T, %w", enterpriseId, fieldId, t, err)
+		return n, fmt.Errorf("failed to get field (%d,%d) from manager in %T, %w", enterpriseId, fieldId, t, err)
 	}
 
 	if fieldBuilder == nil {
-		return fmt.Errorf("undefined field id (%d,%d)", enterpriseId, fieldId)
+		return n, fmt.Errorf("undefined field id (%d,%d)", enterpriseId, fieldId)
 	}
 
 	field := fieldBuilder.
-		FieldManager(t.fieldManager).
-		Length(t.elementLength). // if this is 0xFFFF, this makes a VariableLengthField
-		PEN(enterpriseId).
-		Reverse(reverse).
+		SetFieldManager(t.fieldManager).
+		SetLength(t.elementLength). // if this is 0xFFFF, this makes a VariableLengthField
+		SetPEN(enterpriseId).
+		SetReversed(reverse).
 		Complete()
 
 	t.value = make([]Field, 0)
@@ -247,20 +282,22 @@ func (t *BasicList) Decode(r io.Reader) error {
 	buf := make([]byte, t.length-headerLength)
 	// buf := make([]byte, t.elementLength)
 
-	_, err = r.Read(buf)
+	m, err = r.Read(buf)
+	n += m
 	if err != nil {
-		return fmt.Errorf("failed to read basicList content, %w", err)
+		return n, fmt.Errorf("failed to read basicList content, %w", err)
 	}
 	basicListContent := bytes.NewBuffer(buf)
 	for i := 0; basicListContent.Len() > 0; i++ {
-		err = field.Decode(basicListContent)
+		m, err := field.Decode(basicListContent)
+		n += m
 		if err != nil /* && !errors.Is(err, io.EOF) */ {
-			return fmt.Errorf("error while decoding list element %d in %T, %w", i, t, err)
+			return n, fmt.Errorf("error while decoding list element %d in %T, %w", i, t, err)
 		}
 		t.value = append(t.value, field)
 	}
 
-	return nil
+	return n, nil
 }
 
 func (t *BasicList) Encode(w io.Writer) (n int, err error) {
@@ -418,7 +455,7 @@ type basicListBuilder struct {
 	fieldManager FieldCache
 }
 
-func (t *basicListBuilder) WithFieldManager(fieldManager FieldCache) ListTypeBuilder {
+func (t *basicListBuilder) WithFieldCache(fieldManager FieldCache) ListTypeBuilder {
 	t.fieldManager = fieldManager
 	return t
 }

@@ -82,14 +82,14 @@ func (*IPv4Address) IsReducedLength() bool {
 	return false
 }
 
-func (t *IPv4Address) Decode(in io.Reader) error {
+func (t *IPv4Address) Decode(in io.Reader) (n int, err error) {
 	b := make([]byte, t.Length())
-	_, err := in.Read(b)
+	n, err = in.Read(b)
 	if err != nil {
-		return fmt.Errorf("failed to read data in %T, %w", t, err)
+		return n, fmt.Errorf("failed to read data in %T, %w", t, err)
 	}
 	t.value = net.IP(b)
-	return nil
+	return
 }
 
 func (t *IPv4Address) Encode(w io.Writer) (int, error) {

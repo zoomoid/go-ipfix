@@ -22,6 +22,9 @@ import (
 	"io"
 )
 
+// Boolean is the cannonic boolean data type in RFC 7011 describing boolean values.
+// IPFIX encodes boolean as a single octet, where 0x01 equals true and 0x02 equal false.
+// All other values should fail to decode the data type
 type Boolean struct {
 	value bool
 }
@@ -83,11 +86,11 @@ func (*Boolean) IsReducedLength() bool {
 
 // Decode takes a set of bytes (specifically, SHOULD just one) and decodes it to
 // a boolean information element. If in contains more than one byte, Decode panics
-func (t *Boolean) Decode(in io.Reader) error {
+func (t *Boolean) Decode(in io.Reader) (int, error) {
 	b := make([]byte, t.Length())
-	_, err := in.Read(b)
+	n, err := in.Read(b)
 	if err != nil {
-		return fmt.Errorf("failed to read data in %T, %w", t, err)
+		return n, fmt.Errorf("failed to read data in %T, %w", t, err)
 	}
 	v := b[0]
 	if v == 1 {
@@ -95,9 +98,9 @@ func (t *Boolean) Decode(in io.Reader) error {
 	} else if v == 2 {
 		t.value = false
 	} else {
-		return fmt.Errorf("failed to decode %T, %w", t, ErrUndefinedEncoding)
+		return n, fmt.Errorf("failed to decode %T, %w", t, ErrUndefinedEncoding)
 	}
-	return nil
+	return n, nil
 }
 
 func (t *Boolean) Encode(w io.Writer) (int, error) {

@@ -61,8 +61,22 @@ type TemplateCache interface {
 type StatefulTemplateCache interface {
 	TemplateCache
 
+	// Start starts a stateful template cache. This is for example used in caches requiring a stateful connection
+	// to a database/KV store like the etcd addon.
+	//
+	// These start/stop semantics are "leftovers" from the asynchronous architecture of FlowPlane from which this
+	// library was factored out from. They might be removed in future (breaking) updates, as state management is
+	// generally not the task of this library and thus usage and surface of these methods should be little.
+	//
+	// Start's behavior is to block indefinitely during the lifecycle of the template cache, which means that it is
+	// best used *deferred*, either directly via a goroutine or via a lifecycle management component that starts
+	// objects implementing such Start hooks. This is useful if you have many moving (read: concurrent) parts and are
+	// using channels to pass data betweeen those components. Examples for this are asynchronous Apache Kafka producers,
+	// which is the original setup how the decoder is used in FlowPlane.
 	Start(context.Context) error
 
+	// Close tears down any stateful component of a template store. E.g., this is used in the persistent template
+	// cache to write the templates to disk before shutting down.
 	Close(context.Context) error
 }
 

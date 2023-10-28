@@ -81,14 +81,14 @@ func (*Signed8) IsReducedLength() bool {
 	return false
 }
 
-func (t *Signed8) Decode(in io.Reader) error {
+func (t *Signed8) Decode(in io.Reader) (n int, err error) {
 	b := make([]byte, t.Length())
-	_, err := in.Read(b)
+	n, err = in.Read(b)
 	if err != nil {
-		return fmt.Errorf("failed to read data in %T, %w", t, err)
+		return n, fmt.Errorf("failed to read data in %T, %w", t, err)
 	}
 	t.value = int8(uint8(b[0]))
-	return nil
+	return
 }
 
 func (t *Signed8) Encode(w io.Writer) (int, error) {

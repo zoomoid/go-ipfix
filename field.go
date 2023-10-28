@@ -24,10 +24,35 @@ import (
 	"github.com/zoomoid/go-ipfix/iana/semantics"
 )
 
-type Field interface {
-	json.Marshaler
-	json.Unmarshaler
+type BidirectionalField interface {
+	// IsReversible returns true if the field's underlying information element is
+	// *not* contained in the list of irreversible information elements as per RFC
+	// 5103.
+	//
+	// Note that this function is only practical for information elements described
+	// in RFC 5103, i.e., IEs assigned by IANA, because only for those, the semantics
+	// of reversal are well-defined by the RFC. Enterprise-specific IEs may choose
+	// to implement their own reversal semantics, as it is the case with e.g. CERT IEs
+	Reversible() bool
 
+	// Reversed returns the field's state with regards to RFC 5103, i.e., if the
+	// field is used to carry biflow information for the reverse direction. Note that
+	// this is also used for returning the field's name, indicating that a field is
+	// reversed by prepending "reversed" in front of the name.
+	Reversed() bool
+}
+
+// Field defines the interface for both types of IPFIX fields, either fixed-length or variable-length
+// fields. They share most of their logic, except for encoding and decoding, for which the Encode
+// and Decode methods transparently handle their underlying nature.
+// Fixed-length fields are intuitively simpler, as their length and data type is defined by templates.
+// Variable-length fields encode their data length in the first 1 or 3 bytes (short and long format).
+//
+// The interface also declares methods for converting a fixed-length field to a variable-length field,
+// using Lift(). Though this is practically never done in plain IPFIX, it is convenient to have such
+// a function in user space for conversion between both underlying field types. Note that the reverse
+// direction, converting a variable-length field to a fixed-length field is NOT possible.
+type Field interface {
 	// Id returns the field id as defined
 	Id() uint16
 
@@ -36,6 +61,9 @@ type Field interface {
 
 	// Value returns the underlying data type
 	Value() DataType
+
+	// SetValue sets the value on the internal DataType stored in the field
+	SetValue(v any) Field
 
 	// Type returns a string representation of the underlying DataType
 	Type() string
@@ -54,10 +82,12 @@ type Field interface {
 	// fields whose underlying data types are reliant on this ID, i.e.,
 	// SubTemplateList and SubTemplateMultiList, this is required or otherwise
 	// decoding will not work correctly.
-	//
-	// (Then again have I rarely seen these types actually being used in the real
-	// world)
 	ObservationDomainId() uint32
+
+	// Prototype returns a copy of the field's IE specification, i.e., the
+	// prototype of the field. This can be used for cloning and copying of the
+	// field while preserving semantics
+	Prototype() InformationElement
 
 	// Lift converts a field to a variable-length field, indicating this to the
 	// data type constructor
@@ -65,25 +95,17 @@ type Field interface {
 
 	// Decode creates a DataType from the supplied constructor and decodes the
 	// value from the Reader
-	Decode(io.Reader) error
+	Decode(io.Reader) (int, error)
 
 	// Encode writes a field in IPFIX binary format to a given writer.
 	// It returns the number of written bytes, and an error if an error occurred
 	Encode(io.Writer) (int, error)
-
-	// Consolidate converts the field into a value easily serialized, i.e., by
-	// removing functions and encoding whether the field is a fixed length or
-	// variable length variant.
-	Consolidate() ConsolidatedField
 
 	// Clone clones a field entirely by-value such that changing a Field in a data
 	// record which is also used in a template record does not cause side effects.
 	// The only thing copied by- reference are FieldManager and TemplateManager
 	// instances.
 	Clone() Field
-
-	// SetValue sets the value on the internal DataType stored in the field
-	SetValue(v any) Field
 
 	// Setter to be used when the field is a scope field.
 	Scoped() Field
@@ -95,29 +117,16 @@ type Field interface {
 	// collision.
 	IsScope() bool
 
-	// Prototype returns a copy of the field's IE specification, i.e., the
-	// prototype of the field. This can be used for cloning and copying of the
-	// field while preserving semantics
-	Prototype() InformationElement
+	BidirectionalField
 
-	// IsReversible returns true if the field's underlying information element is
-	// *not* contained in the list of irreversible information elements as per RFC
-	// 5103.
-	//
-	// Note that this function is only practical for information elements described
-	// in RFC 5103, i.e., IEs assigned by IANA, because only for those, the semantics
-	// of reversal are well-defined by the RFC. Enterprise-specific IEs may choose
-	// to implement their own reversal semantics, as it is the case with e.g. CERT IEs
-	Reversible() bool
+	// Consolidate converts the field into a value easily serialized, i.e., by
+	// removing functions and encoding whether the field is a fixed length or
+	// variable length variant.
+	Consolidate() ConsolidatedField
 
-	// Reversed returns the field's state with regards to RFC 5103, i.e., if the
-	// field is used to carry biflow information for the reverse direction. Note that
-	// this is also used for returning the field's name, indicating that a field is
-	// reversed by prepending "reversed" in front of the name.
-	Reversed() bool
+	json.Marshaler
+	json.Unmarshaler
 }
-
-type FieldConstructor func(name string) Field
 
 type ConsolidatedField struct {
 	Id   uint16 `json:"id"`
@@ -178,6 +187,7 @@ func (cf *ConsolidatedField) Restore(fieldManager FieldCache, templateManager Te
 	}
 
 	ie.Name = cf.Name
+
 	var reverse bool
 	// Consolidating a reverse field sets the PEN to the PEN reserved for reverse fields
 	if strings.HasPrefix(cf.Name, "reverse") && cf.PEN == ReversePEN {
@@ -195,12 +205,12 @@ func (cf *ConsolidatedField) Restore(fieldManager FieldCache, templateManager Te
 	}
 
 	builder := NewFieldBuilder(ie).
-		Length(cf.Length).
-		ObservationDomain(cf.ObservationDomainId).
-		PEN(cf.PEN).
-		Reverse(reverse).
-		FieldManager(fieldManager).
-		TemplateManager(templateManager)
+		SetLength(cf.Length).
+		SetObservationDomain(cf.ObservationDomainId).
+		SetPEN(cf.PEN).
+		SetReversed(reverse).
+		SetFieldManager(fieldManager).
+		SetTemplateManager(templateManager)
 
 	f := builder.Complete()
 

@@ -102,16 +102,16 @@ func (t *Signed16) IsReducedLength() bool {
 	return t.reducedLength
 }
 
-func (t *Signed16) Decode(in io.Reader) error {
+func (t *Signed16) Decode(in io.Reader) (n int, err error) {
 	b := make([]byte, t.Length())
-	_, err := in.Read(b)
+	n, err = in.Read(b)
 	if err != nil {
-		return fmt.Errorf("failed to read data in %T, %w", t, err)
+		return n, fmt.Errorf("failed to read data in %T, %w", t, err)
 	}
 	if !t.reducedLength {
 		// fast-track
 		t.value = int16(binary.BigEndian.Uint16(b))
-		return nil
+		return
 	}
 	// sample MSB and pad byte array with it
 	msb := b[0] >> 7
@@ -127,7 +127,7 @@ func (t *Signed16) Decode(in io.Reader) error {
 		c[i+offset] = b[i]
 	}
 	t.value = int16(binary.BigEndian.Uint16(c))
-	return nil
+	return
 }
 
 func (t *Signed16) Encode(w io.Writer) (int, error) {

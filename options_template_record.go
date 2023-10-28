@@ -44,6 +44,27 @@ func (otr *OptionsTemplateRecord) Id() uint16 {
 	return otr.TemplateId
 }
 
+func (otr *OptionsTemplateRecord) Decode(r io.Reader) (n int, err error) {
+	t := make([]byte, 2)
+	n, err = r.Read(t)
+	if err != nil {
+		return
+	}
+	otr.TemplateId = binary.BigEndian.Uint16(t)
+
+	m, err := r.Read(t)
+	n += m
+	if err != nil {
+		return
+	}
+	otr.FieldCount = binary.BigEndian.Uint16(t)
+	return
+}
+
+func (otr *OptionsTemplateRecord) DecodeData(r io.Reader) (n int, err error) {
+	return
+}
+
 func (otr *OptionsTemplateRecord) Encode(w io.Writer) (n int, err error) {
 	l := make([]byte, 2)
 	binary.BigEndian.PutUint16(l, otr.TemplateId)

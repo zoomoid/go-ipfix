@@ -91,7 +91,7 @@ func (f *VariableLengthField) Prototype() InformationElement {
 	return f.prototype
 }
 
-func (f *VariableLengthField) Decode(r io.Reader) error {
+func (f *VariableLengthField) Decode(r io.Reader) (int, error) {
 	f.initializeValue()
 	defer func() {
 		f.decoded = true
@@ -100,17 +100,23 @@ func (f *VariableLengthField) Decode(r io.Reader) error {
 	var length uint16
 	var shortLength uint8
 	var longLength uint16
-	err := binary.Read(r, binary.BigEndian, &shortLength)
+
+	b := make([]byte, 1)
+	n, err := r.Read(b)
 	if err != nil {
-		return err
+		return n, err
 	}
+	shortLength = uint8(b[0])
+
 	if shortLength == 0xFF {
 		f.longLengthFormat = true
 		// read two more bytes denoting a length up to 2^16 bytes
-		err = binary.Read(r, binary.BigEndian, &longLength)
+		b := make([]byte, 2)
+		n, err := r.Read(b)
 		if err != nil {
-			return err
+			return n, err
 		}
+		longLength = binary.BigEndian.Uint16(b)
 		length = longLength
 	} else {
 		length = uint16(shortLength)
@@ -118,14 +124,17 @@ func (f *VariableLengthField) Decode(r io.Reader) error {
 	f.length = length
 
 	buf := make([]byte, length)
-	_, err = r.Read(buf)
+	m, err := r.Read(buf)
+	n += m
 	if err != nil {
-		return err
+		return n, err
 	}
 
-	return f.value.
+	m, err = f.value.
 		SetLength(length).           // set the decoded length here, such that the subsequent DataType-level decoder consumes the right amount of bytes
 		Decode(bytes.NewBuffer(buf)) // hand down a new buffer such that the parsing cannot overflow the original buffer
+	n += m
+	return n, err
 }
 
 func (f *VariableLengthField) Encode(w io.Writer) (int, error) {
@@ -168,10 +177,10 @@ func (f *VariableLengthField) initializeValue() {
 		return
 	}
 	cc := NewDataTypeBuilder(f.constructor).
-		Length(f.Length()).
-		ObservationDomain(f.observationDomainId).
-		FieldManager(f.fieldManager).
-		TemplateManager(f.templateManager).
+		SetLength(f.Length()).
+		SetObservationDomain(f.observationDomainId).
+		SetFieldCache(f.fieldManager).
+		SetTemplateCache(f.templateManager).
 		Complete()
 
 	f.constructor = cc
@@ -185,7 +194,7 @@ func (f *VariableLengthField) Value() DataType {
 }
 
 func (f *VariableLengthField) Reversible() bool {
-	_, nonReversible := NonReversibleFields[f.id]
+	_, nonReversible := nonReversibleFields[f.id]
 	return !nonReversible
 }
 

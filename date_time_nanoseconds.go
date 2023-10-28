@@ -89,17 +89,17 @@ func (*DateTimeNanoseconds) IsReducedLength() bool {
 	return false
 }
 
-func (t *DateTimeNanoseconds) Decode(in io.Reader) error {
+func (t *DateTimeNanoseconds) Decode(in io.Reader) (int, error) {
 	b := make([]byte, t.Length())
-	_, err := in.Read(b)
+	n, err := in.Read(b)
 	if err != nil {
-		return fmt.Errorf("failed to read data in %T, %w", t, err)
+		return n, fmt.Errorf("failed to read data in %T, %w", t, err)
 	}
 	t.seconds = binary.BigEndian.Uint32(b[0 : t.Length()/2])
 	// reading the fractional part while also masking the lower 11 bits as per RFC 7011#6.1.9
 	t.fraction = float64(binary.BigEndian.Uint32(b[t.Length()/2:t.Length()])) / math.Pow(2, 32)
 	t.value = NTPEpoch.Add(time.Duration(t.seconds) * time.Second).Add(time.Duration(t.fraction) * time.Second)
-	return nil
+	return n, nil
 }
 
 func (t *DateTimeNanoseconds) Encode(w io.Writer) (int, error) {

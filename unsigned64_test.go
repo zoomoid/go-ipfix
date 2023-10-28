@@ -33,7 +33,7 @@ func TestUnsigned64(t *testing.T) {
 			inUint64 := uint64(0xAB32131FFA4192)
 			in := []byte{0xAB, 0x32, 0x13, 0x1F, 0xFA, 0x41, 0x92}
 			v := NewUnsigned64().WithLength(7)()
-			err := v.Decode(bytes.NewBuffer(in))
+			_, err := v.Decode(bytes.NewBuffer(in))
 			if err != nil {
 				t.Error(err)
 				t.Fail()
@@ -48,7 +48,7 @@ func TestUnsigned64(t *testing.T) {
 			inUint64 := uint64(0xAB32131FFA41)
 			in := []byte{0xAB, 0x32, 0x13, 0x1F, 0xFA, 0x41}
 			v := NewUnsigned64().WithLength(uint16(len(in)))()
-			err := v.Decode(bytes.NewBuffer(in))
+			_, err := v.Decode(bytes.NewBuffer(in))
 			if err != nil {
 				t.Error(err)
 				t.Fail()

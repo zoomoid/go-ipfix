@@ -46,7 +46,7 @@ type DataType interface {
 
 	// Decode reads a fixed number of bytes from the reader and decodes the value
 	// data-type-dependant. Returns the first error that occurs during decoding.
-	Decode(io.Reader) error
+	Decode(io.Reader) (int, error)
 
 	// Encode writes a data type in IPFIX binary format to a given writer.
 	// It returns the number of written bytes, and an error if an error occurred
@@ -87,42 +87,45 @@ type DataType interface {
 	SetValue(v any) DataType
 }
 
-var (
-	constructorTable map[string]DataTypeConstructor
-)
-
-func init() {
-	initializeConstructorMap()
-}
-
-func initializeConstructorMap() {
-	constructorTable = make(map[string]DataTypeConstructor, len(constructors))
-
-	for _, c := range constructors {
-		constructorTable[c().Type()] = c
-	}
-}
-
+// LookupConstructor is an accessor to the private internal, but global map of currently known
+// IPFIX abstract data types.
+//
+// If no constructor is associated with the given name, LookupConstructor panics. This behavior
+// is to be discussed and potentially amended.
 func LookupConstructor(name string) DataTypeConstructor {
-	if constructorTable == nil {
-		initializeConstructorMap()
-
-		// panic(errors.New("constructor map is not initialized"))
-	}
-
-	c, ok := constructorTable[name]
+	c, ok := constructors[name]
 	if !ok {
 		panic(fmt.Errorf("data type constructor not defined: %s", name))
 	}
 	return c
 }
 
-var _ json.Marshaler = DataType(nil)
-var _ json.Unmarshaler = DataType(nil)
-var _ fmt.Stringer = DataType(nil)
+// SupportedTypes returns a slice containing all currently known DataType constructors.
+func SupportedTypes() []DataTypeConstructor {
+	cs := make([]DataTypeConstructor, len(constructors))
+	idx := 0
+	for _, c := range constructors {
+		cs[idx] = c
+	}
+	return cs
+}
 
+// DataTypeConstructor is a type capturing the 0-adic constructor function for a new DataType.
+// All DataTypes should, aside from their implementation of DataType's methods, also provide
+// such a constructor function for unified instantiation.
+//
+// Mechanisms of dependency injection can also lead DataTypes to implement decorators that return
+// new DataTypeConstructor functions with parameters curried inside the constructor function's closure.
 type DataTypeConstructor func() DataType
 
+// DataTypeFromNumber looks up the default constructor for each of the currently known
+// IPFIX abstract data types (both in RFC 7011 and RFC 6313) by their IANA-assigned
+// identifier.
+// If an id is given that is NOT in the lookup table, DataTypeFromNumber panics.
+// This behaviour is due to no better error handling mechanism currently existing
+// in the call path of this function.
+//
+// TODO(zoomoid): rethink if panicking is the best idea here.
 func DataTypeFromNumber(id uint8) DataTypeConstructor {
 	switch id {
 	case 0:
@@ -180,32 +183,32 @@ func DataTypeFromNumber(id uint8) DataTypeConstructor {
 	}
 }
 
-var constructors []DataTypeConstructor = []DataTypeConstructor{
-	NewBoolean,
-	NewUnsigned8,
-	NewUnsigned16,
-	NewUnsigned32,
-	NewUnsigned64,
-	NewSigned8,
-	NewSigned16,
-	NewSigned32,
-	NewSigned64,
-	NewFloat32,
-	NewFloat64,
-	NewDateTimeSeconds,
-	NewDateTimeMilliseconds,
-	NewDateTimeMicroseconds,
-	NewDateTimeNanoseconds,
-	NewIPv4Address,
-	NewIPv6Address,
-	NewMacAddress,
-	NewString,
-	NewOctetArray,
-	NewBasicList,
-	NewDefaultSubTemplateList,
-	NewDefaultSubTemplateMultiList,
+var constructors map[string]DataTypeConstructor = map[string]DataTypeConstructor{
+	"octetArray":           NewOctetArray,
+	"unsigned8":            NewUnsigned8,
+	"unsigned16":           NewUnsigned16,
+	"unsigned32":           NewUnsigned32,
+	"unsigned64":           NewUnsigned64,
+	"signed8":              NewSigned8,
+	"signed16":             NewSigned16,
+	"signed32":             NewSigned32,
+	"signed64":             NewSigned64,
+	"float32":              NewFloat32,
+	"float64":              NewFloat64,
+	"boolean":              NewBoolean,
+	"macAddress":           NewMacAddress,
+	"string":               NewString,
+	"dateTimeSeconds":      NewDateTimeSeconds,
+	"dateTimeMilliseconds": NewDateTimeMilliseconds,
+	"dateTimeMicroseconds": NewDateTimeMicroseconds,
+	"dateTimeNanoseconds":  NewDateTimeNanoseconds,
+	"ipv4Address":          NewIPv4Address,
+	"ipv6Address":          NewIPv6Address,
+	"basicList":            NewBasicList,
+	"subTemplateList":      NewDefaultSubTemplateList,
+	"subTemplateMultiList": NewDefaultSubTemplateMultiList,
 }
 
-func SupportedTypes() []DataTypeConstructor {
-	return constructors
-}
+var _ json.Marshaler = DataType(nil)
+var _ json.Unmarshaler = DataType(nil)
+var _ fmt.Stringer = DataType(nil)

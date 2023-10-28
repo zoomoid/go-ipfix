@@ -88,20 +88,21 @@ func (*String) IsReducedLength() bool {
 	return false
 }
 
-func (t *String) Decode(in io.Reader) error {
+func (t *String) Decode(in io.Reader) (n int, err error) {
 	b := make([]byte, t.Length())
-	_, err := in.Read(b)
+	n, err = in.Read(b)
 	if err != nil {
-		return fmt.Errorf("failed to read data in %T, %w", t, err)
+		return n, fmt.Errorf("failed to read data in %T, %w", t, err)
 	}
 	// check if in is a valid utf8 string
+	// TODO(zoomoid): reactivate this, but this broke a lot of string decoding in prior versions...
 	// if !utf8.Valid(b) {
 	// 	// "Collecting Processes SHOULD detect and ignore such values." (RFC7011#section-6.1)
 	// 	logger.V(1).Info("WARN decoded string data type that is not valid UTF-8, ignoring...", "bytes", b)
 	// 	return nil
 	// }
 	t.value = string(b)
-	return nil
+	return
 }
 
 func (t *String) Encode(w io.Writer) (int, error) {

@@ -44,7 +44,6 @@ type DecayingEphemeralCache struct {
 }
 
 var _ TemplateCacheWithTimeout = &DecayingEphemeralCache{}
-var _ TemplateCacheDriver = &DecayingEphemeralCache{}
 
 func NewDefaultDecayingEphemeralCache() TemplateCache {
 	return NewNamedDecayingEphemeralCache("default")
@@ -164,16 +163,6 @@ func (ts *DecayingEphemeralCache) expireTemplates() {
 }
 
 func (ts *DecayingEphemeralCache) Close(context.Context) error {
-	// no-op
-	return nil
-}
-
-func (ts *DecayingEphemeralCache) Initialize(context.Context) error {
-	// no-op
-	return nil
-}
-
-func (ts *DecayingEphemeralCache) Prepare() error {
 	// no-op
 	return nil
 }

@@ -102,16 +102,16 @@ func (t *Unsigned16) IsReducedLength() bool {
 	return t.reducedLength
 }
 
-func (t *Unsigned16) Decode(in io.Reader) error {
+func (t *Unsigned16) Decode(in io.Reader) (n int, err error) {
 	b := make([]byte, t.Length())
-	_, err := in.Read(b)
+	n, err = in.Read(b)
 	if err != nil {
-		return fmt.Errorf("failed to read data in %T, %w", t, err)
+		return n, fmt.Errorf("failed to read data in %T, %w", t, err)
 	}
 	if !t.reducedLength {
 		// fast-track
 		t.value = binary.BigEndian.Uint16(b)
-		return nil
+		return
 	}
 	offset := t.DefaultLength() - t.Length()
 	c := make([]byte, t.DefaultLength())
@@ -120,7 +120,7 @@ func (t *Unsigned16) Decode(in io.Reader) error {
 		c[i+offset] = b[i]
 	}
 	t.value = binary.BigEndian.Uint16(c)
-	return nil
+	return
 }
 
 func (t *Unsigned16) Encode(w io.Writer) (int, error) {

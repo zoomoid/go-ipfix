@@ -19,17 +19,15 @@ package ipfix
 import (
 	"encoding/binary"
 	"io"
-
-	"github.com/zoomoid/go-ipfix/iana/version"
 )
 
 type Message struct {
-	Version             version.ProtocolVersion `json:"-" yaml:"-"`
-	Length              uint16                  `json:"length,omitempty" yaml:"length,omitempty"`
-	ExportTime          uint32                  `json:"export_time,omitempty" yaml:"exportTime,omitempty"`
-	SequenceNumber      uint32                  `json:"sequence_number,omitempty" yaml:"sequenceNumber,omitempty"`
-	ObservationDomainId uint32                  `json:"observation_domain_id,omitempty" yaml:"observationDomainId,omitempty"`
-	Sets                []Set                   `json:"sets,omitempty" yaml:"sets,omitempty"`
+	Version             uint16 `json:"version,omitempty" yaml:"version,omitempty"`
+	Length              uint16 `json:"length,omitempty" yaml:"length,omitempty"`
+	ExportTime          uint32 `json:"export_time,omitempty" yaml:"exportTime,omitempty"`
+	SequenceNumber      uint32 `json:"sequence_number,omitempty" yaml:"sequenceNumber,omitempty"`
+	ObservationDomainId uint32 `json:"observation_domain_id,omitempty" yaml:"observationDomainId,omitempty"`
+	Sets                []Set  `json:"sets,omitempty" yaml:"sets,omitempty"`
 }
 
 func (p *Message) Encode(w io.Writer) (int, error) {
@@ -57,4 +55,51 @@ func (p *Message) Encode(w io.Writer) (int, error) {
 		}
 	}
 	return nh + nb, err
+}
+
+func (p *Message) Decode(r io.Reader) (int, error) {
+	var carry int = 0
+	var shortbuf []byte = make([]byte, 2)
+	var longbuf []byte = make([]byte, 4)
+
+	n, err := r.Read(shortbuf)
+	carry += n
+	if err != nil {
+		return carry, err
+	}
+	p.Version = binary.BigEndian.Uint16(shortbuf)
+
+	if p.Version != 10 {
+		return carry, UnknownVersion(p.Version)
+	}
+
+	n, err = r.Read(shortbuf)
+	carry += n
+	if err != nil {
+		return 0, err
+	}
+	p.Length = binary.BigEndian.Uint16(shortbuf)
+
+	n, err = r.Read(longbuf)
+	carry += n
+	if err != nil {
+		return carry, err
+	}
+	p.ExportTime = binary.BigEndian.Uint32(longbuf)
+
+	n, err = r.Read(longbuf)
+	carry += n
+	if err != nil {
+		return carry, err
+	}
+	p.SequenceNumber = binary.BigEndian.Uint32(longbuf)
+
+	n, err = r.Read(longbuf)
+	carry += n
+	if err != nil {
+		return carry, err
+	}
+	p.ObservationDomainId = binary.BigEndian.Uint32(longbuf)
+
+	return carry, nil
 }

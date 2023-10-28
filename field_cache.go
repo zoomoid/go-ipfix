@@ -35,7 +35,7 @@ var (
 // By default, this does not include methods for handling stateful FieldCaches, those should be provided
 // on the explicit types. See etcd.FieldCache for such an implementation.
 type FieldCache interface {
-	// Get retrieves a field builder instance from the cache for creating
+	// GetBuilder retrieves a field builder instance from the cache for creating
 	// fields during decoding.
 	//
 	// If the field is not found in the cache, a new UnassignedFieldBuilder is
@@ -43,7 +43,7 @@ type FieldCache interface {
 	//
 	// If an error occurs during retrieval of the field, an error is returned,
 	// and the FieldBuilder pointer is nil
-	Get(context.Context, FieldKey) (*FieldBuilder, error)
+	GetBuilder(context.Context, FieldKey) (*FieldBuilder, error)
 
 	// Add adds a new Information Element definition to the field cache.
 	//
@@ -59,20 +59,20 @@ type FieldCache interface {
 	// and the instantiated FieldBuilder types, and cleans up both at once.
 	Delete(context.Context, FieldKey) error
 
-	// GetPrototype returns the information element that defines a field currently in the cache.
+	// Get returns the information element that defines a field currently in the cache.
 	//
-	// GetPrototype returns an error if no element with the FieldKey is stored in the cache.
+	// Get returns an error if no element with the FieldKey is stored in the cache.
 	//
-	// GetPrototype returns errors that occur during retrieval of the information element.
-	GetPrototype(context.Context, FieldKey) (*InformationElement, error)
+	// Get returns errors that occur during retrieval of the information element.
+	Get(context.Context, FieldKey) (*InformationElement, error)
 
 	// GetAll returns a map of FieldBuilders for all fields currently stored in the cache.
 	// If no fields are stored in the cache, the map is empty.
-	GetAll(context.Context) map[FieldKey]*FieldBuilder
+	GetAllBuilders(context.Context) map[FieldKey]*FieldBuilder
 
-	// GetAllPrototypes returns a map of InformationElements of all the fields stored in the cache.
+	// GetAll returns a map of InformationElements of all the fields stored in the cache.
 	// If no information elements were added to the cache prior to the call, the map is empty.
-	GetAllPrototypes(context.Context) map[FieldKey]*InformationElement
+	GetAll(context.Context) map[FieldKey]*InformationElement
 
 	json.Marshaler
 }
@@ -155,19 +155,19 @@ func NewEphemeralFieldCache(templateManager TemplateCache) FieldCache {
 	return fm
 }
 
-func (fm *EphemeralFieldCache) Get(ctx context.Context, key FieldKey) (*FieldBuilder, error) {
+func (fm *EphemeralFieldCache) GetBuilder(ctx context.Context, key FieldKey) (*FieldBuilder, error) {
 	fm.mu.RLock()
 	defer fm.mu.RUnlock()
 
 	field, ok := fm.fields[key]
 	if !ok {
 		// logger.V(2).Info("fieldManager: unknown key", "enterpriseId", enterpriseId)
-		return NewUnassignedFieldBuilder(key.Id).PEN(key.EnterpriseId), nil
+		return NewUnassignedFieldBuilder(key.Id).SetPEN(key.EnterpriseId), nil
 	}
 	return field, nil
 }
 
-func (fm *EphemeralFieldCache) GetPrototype(ctx context.Context, key FieldKey) (*InformationElement, error) {
+func (fm *EphemeralFieldCache) Get(ctx context.Context, key FieldKey) (*InformationElement, error) {
 	fm.mu.RLock()
 	defer fm.mu.RUnlock()
 
@@ -187,9 +187,9 @@ func (fm *EphemeralFieldCache) Add(ctx context.Context, element InformationEleme
 
 	fm.prototypes[fk] = &element
 	fm.fields[fk] = NewFieldBuilder(element).
-		FieldManager(fm).
-		TemplateManager(fm.templateManager).
-		PEN(element.EnterpriseId)
+		SetFieldManager(fm).
+		SetTemplateManager(fm.templateManager).
+		SetPEN(element.EnterpriseId)
 
 	return nil
 }
@@ -203,14 +203,14 @@ func (fm *EphemeralFieldCache) Delete(ctx context.Context, key FieldKey) error {
 	return nil
 }
 
-func (fm *EphemeralFieldCache) GetAll(ctx context.Context) map[FieldKey]*FieldBuilder {
+func (fm *EphemeralFieldCache) GetAllBuilders(ctx context.Context) map[FieldKey]*FieldBuilder {
 	fm.mu.RLock()
 	defer fm.mu.RUnlock()
 
 	return fm.fields
 }
 
-func (fm *EphemeralFieldCache) GetAllPrototypes(ctx context.Context) map[FieldKey]*InformationElement {
+func (fm *EphemeralFieldCache) GetAll(ctx context.Context) map[FieldKey]*InformationElement {
 	fm.mu.RLock()
 	defer fm.mu.RUnlock()
 
@@ -228,13 +228,13 @@ func (fm *EphemeralFieldCache) MarshalJSON() ([]byte, error) {
 	return json.Marshal(s)
 }
 
-// NewIPFIXFieldManager is a utility for creating field managers with initialized IANA fields quickly,
+// newIPFIXFieldManager is a utility for creating field managers with initialized IANA fields quickly,
 // e.g. for unit testing.
 //
-// NewIPFIXFieldManager panics if failing to add an IE to the cache.
-func NewIPFIXFieldManager(templateManager TemplateCache) FieldCache {
+// newIPFIXFieldManager panics if failing to add an IE to the cache.
+func newIPFIXFieldManager(templateManager TemplateCache) FieldCache {
 	fm := NewEphemeralFieldCache(templateManager)
-	for idx, ie := range IPFIX() {
+	for idx, ie := range IANA() {
 		err := fm.Add(context.Background(), ie)
 		if err != nil {
 			panic(fmt.Errorf("failed to add IANA IE %d to ipfix field manager, %w", idx, err))

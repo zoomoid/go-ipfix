@@ -21,6 +21,10 @@ import (
 	"github.com/zoomoid/go-ipfix/iana/status"
 )
 
+// NewUnassignedFieldBuilder may be used to quickly create a FieldBuilder from only an ID.
+// The resulting builder and the underlying IE have no further defined fields, with the name
+// being "unassigned", the enterprise ID being 0, the data type being the default IPFIX data type
+// for unknown IEs, octetArray, undefined IE semantics and undefined IE status.
 func NewUnassignedFieldBuilder(id uint16) *FieldBuilder {
 	return NewFieldBuilder(InformationElement{
 		Name:         "unassigned",

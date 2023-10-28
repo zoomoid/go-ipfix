@@ -47,46 +47,50 @@ func NewFieldBuilder(ie InformationElement) *FieldBuilder {
 	}
 }
 
-func (b *FieldBuilder) ObservationDomain(id uint32) *FieldBuilder {
+func (b *FieldBuilder) GetIE() InformationElement {
+	return b.prototype
+}
+
+func (b *FieldBuilder) SetObservationDomain(id uint32) *FieldBuilder {
 	b.observationDomainId = id
 	return b
 }
 
-func (b *FieldBuilder) FieldManager(fieldManager FieldCache) *FieldBuilder {
+func (b *FieldBuilder) SetFieldManager(fieldManager FieldCache) *FieldBuilder {
 	b.fieldManager = fieldManager
 	return b
 }
 
-func (b *FieldBuilder) TemplateManager(templateManager TemplateCache) *FieldBuilder {
+func (b *FieldBuilder) SetTemplateManager(templateManager TemplateCache) *FieldBuilder {
 	b.templateManager = templateManager
 	return b
 }
 
-// Length sets the field's length. This handles 0xFF as variable
-func (b *FieldBuilder) Length(length uint16) *FieldBuilder {
+// SetLength sets the field's length. This handles 0xFF as variable
+func (b *FieldBuilder) SetLength(length uint16) *FieldBuilder {
 	b.length = length
 	return b
 }
 
-// PEN sets the field's Private Enterprise Number
-func (b *FieldBuilder) PEN(pen uint32) *FieldBuilder {
+// SetPEN sets the field's Private Enterprise Number
+func (b *FieldBuilder) SetPEN(pen uint32) *FieldBuilder {
 	b.prototype.EnterpriseId = pen
 	return b
 }
 
-func (b *FieldBuilder) Reverse(isReverse bool) *FieldBuilder {
+func (b *FieldBuilder) SetReversed(isReverse bool) *FieldBuilder {
 	b.reverse = isReverse
 	return b
 }
 
 func (b *FieldBuilder) Complete() Field {
-	constructorBuilder := NewDataTypeBuilder(b.prototype.Constructor).Length(b.length)
+	constructorBuilder := NewDataTypeBuilder(b.prototype.Constructor).SetLength(b.length)
 	// if the semantic of the field is a List, then decorate their constructors with
 	if b.prototype.Semantics == semantics.List {
 		constructorBuilder.
-			ObservationDomain(b.observationDomainId).
-			FieldManager(b.fieldManager).
-			TemplateManager(b.templateManager)
+			SetObservationDomain(b.observationDomainId).
+			SetFieldCache(b.fieldManager).
+			SetTemplateCache(b.templateManager)
 	}
 
 	decoratedConstructor := constructorBuilder.Complete()
@@ -135,40 +139,41 @@ func NewDataTypeBuilder(constructor DataTypeConstructor) *dataTypeBuilder {
 	}
 }
 
-func (b *dataTypeBuilder) ObservationDomain(id uint32) *dataTypeBuilder {
+func (b *dataTypeBuilder) SetObservationDomain(id uint32) *dataTypeBuilder {
 	b.observationDomainId = id
 	return b
 }
 
-func (b *dataTypeBuilder) Length(length uint16) *dataTypeBuilder {
+func (b *dataTypeBuilder) SetLength(length uint16) *dataTypeBuilder {
 	b.length = length
 	return b
 }
 
-func (b *dataTypeBuilder) FieldManager(fieldManager FieldCache) *dataTypeBuilder {
-	b.fieldManager = fieldManager
+func (b *dataTypeBuilder) SetFieldCache(fieldCache FieldCache) *dataTypeBuilder {
+	b.fieldManager = fieldCache
 	return b
 }
 
-func (b *dataTypeBuilder) TemplateManager(templateManager TemplateCache) *dataTypeBuilder {
-	b.templateManager = templateManager
+func (b *dataTypeBuilder) SetTemplateCache(templateCache TemplateCache) *dataTypeBuilder {
+	b.templateManager = templateCache
 	return b
 }
 
 func (b *dataTypeBuilder) Complete() DataTypeConstructor {
 	decoratedConstructor := b.constructor().WithLength(b.length)
 
+	// ListType and TemplateListTypes are decorated additionally with FieldCache or TemplateCache
 	switch lc := decoratedConstructor().(type) {
 	case ListType:
 		decoratedConstructor = lc.
 			NewBuilder().
-			WithFieldManager(b.fieldManager).
+			WithFieldCache(b.fieldManager).
 			Complete()
 	case TemplateListType:
 		decoratedConstructor = lc.
 			NewBuilder().
-			WithFieldManager(b.fieldManager).
-			WithTemplateManager(b.templateManager).
+			WithFieldCache(b.fieldManager).
+			WithTemplateCache(b.templateManager).
 			WithObservationDomain(b.observationDomainId).
 			Complete()
 	}

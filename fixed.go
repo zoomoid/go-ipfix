@@ -61,7 +61,7 @@ func (f *FixedLengthField) Lift() *VariableLengthField {
 	}
 }
 
-func (f *FixedLengthField) Decode(r io.Reader) error {
+func (f *FixedLengthField) Decode(r io.Reader) (int, error) {
 	if f.value == nil {
 		f.value = f.constructor()
 	}

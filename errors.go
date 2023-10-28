@@ -19,8 +19,6 @@ package ipfix
 import (
 	"errors"
 	"fmt"
-
-	"github.com/zoomoid/go-ipfix/iana/version"
 )
 
 var (
@@ -33,7 +31,7 @@ func TemplateNotFound(observationDomainId uint32, templateId uint16) error {
 	return fmt.Errorf("%w for %d in observation domain %d", ErrTemplateNotFound, templateId, observationDomainId)
 }
 
-func UnknownVersion(version version.ProtocolVersion) error {
+func UnknownVersion(version uint16) error {
 	return fmt.Errorf("%w %d, only 9 and 10 are specified", ErrUnknownVersion, version)
 }
 

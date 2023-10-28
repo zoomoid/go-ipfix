@@ -102,17 +102,17 @@ func (t *Unsigned64) IsReducedLength() bool {
 	return t.reducedLength
 }
 
-func (t *Unsigned64) Decode(in io.Reader) error {
+func (t *Unsigned64) Decode(in io.Reader) (n int, err error) {
 	// allocate a buffer of the (possibly reduced) length of the data type
 	b := make([]byte, t.Length())
-	_, err := in.Read(b)
+	n, err = in.Read(b)
 	if err != nil {
-		return fmt.Errorf("failed to read data in %T, %w", t, err)
+		return n, fmt.Errorf("failed to read data in %T, %w", t, err)
 	}
 	if !t.reducedLength {
 		// fast-track
 		t.value = binary.BigEndian.Uint64(b)
-		return nil
+		return
 	}
 	// because reduced-length encoding still preserves BigEndian, we pad the
 	// internal uint64
@@ -123,7 +123,7 @@ func (t *Unsigned64) Decode(in io.Reader) error {
 		c[i+offset] = b[i]
 	}
 	t.value = binary.BigEndian.Uint64(c)
-	return nil
+	return
 }
 
 func (t *Unsigned64) Encode(w io.Writer) (int, error) {

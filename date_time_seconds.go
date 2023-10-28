@@ -84,15 +84,15 @@ func (*DateTimeSeconds) IsReducedLength() bool {
 	return false
 }
 
-func (t *DateTimeSeconds) Decode(in io.Reader) error {
+func (t *DateTimeSeconds) Decode(in io.Reader) (int, error) {
 	b := make([]byte, t.Length())
-	_, err := in.Read(b)
+	n, err := in.Read(b)
 	if err != nil {
-		return fmt.Errorf("failed to read data in %T, %w", t, err)
+		return n, fmt.Errorf("failed to read data in %T, %w", t, err)
 	}
 	seconds := binary.BigEndian.Uint32(b)
 	t.value = time.Unix(int64(seconds), 0).UTC()
-	return nil
+	return n, nil
 }
 
 func (t *DateTimeSeconds) Encode(w io.Writer) (int, error) {

@@ -81,15 +81,15 @@ func (*Float64) IsReducedLength() bool {
 	return false
 }
 
-func (t *Float64) Decode(in io.Reader) error {
+func (t *Float64) Decode(in io.Reader) (int, error) {
 	b := make([]byte, t.Length())
-	_, err := in.Read(b)
+	n, err := in.Read(b)
 	if err != nil {
-		return fmt.Errorf("failed to read data in %T, %w", t, err)
+		return n, fmt.Errorf("failed to read data in %T, %w", t, err)
 	}
 	i := binary.BigEndian.Uint64(b)
 	t.value = math.Float64frombits(i)
-	return nil
+	return n, nil
 }
 
 func (t *Float64) Encode(w io.Writer) (int, error) {

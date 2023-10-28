@@ -84,15 +84,15 @@ func (*DateTimeMilliseconds) IsReducedLength() bool {
 	return false
 }
 
-func (t *DateTimeMilliseconds) Decode(in io.Reader) error {
+func (t *DateTimeMilliseconds) Decode(in io.Reader) (int, error) {
 	b := make([]byte, t.Length())
-	_, err := in.Read(b)
+	n, err := in.Read(b)
 	if err != nil {
-		return fmt.Errorf("failed to read data in %T, %w", t, err)
+		return n, fmt.Errorf("failed to read data in %T, %w", t, err)
 	}
 	milliseconds := binary.BigEndian.Uint64(b)
 	t.value = time.UnixMilli(int64(milliseconds))
-	return nil
+	return n, nil
 }
 
 func (t *DateTimeMilliseconds) Encode(w io.Writer) (int, error) {

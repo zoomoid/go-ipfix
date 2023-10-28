@@ -37,7 +37,7 @@ type ListType interface {
 //
 // This pattern also applies to TemplateListTypes, see below
 type ListTypeBuilder interface {
-	WithFieldManager(FieldCache) ListTypeBuilder
+	WithFieldCache(FieldCache) ListTypeBuilder
 	Complete() DataTypeConstructor
 }
 
@@ -60,8 +60,8 @@ type TemplateListType interface {
 //  3. complete the builder by calling TemplateListTypeBuilder.Complete(), creating a new DataTypeConstructor
 //     that is decorated with the caches provided earlier.
 type TemplateListTypeBuilder interface {
-	WithTemplateManager(TemplateCache) TemplateListTypeBuilder
-	WithFieldManager(FieldCache) TemplateListTypeBuilder
+	WithTemplateCache(TemplateCache) TemplateListTypeBuilder
+	WithFieldCache(FieldCache) TemplateListTypeBuilder
 
 	// WithObservationDomain binds an observation domain id to the builder such that the underlying data type
 	// may only retrieve templates from the designated "namespace".

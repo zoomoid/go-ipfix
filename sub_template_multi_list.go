@@ -147,18 +147,18 @@ func (t *SubTemplateMultiList) Elements() []subTemplateListContent {
 	return t.value
 }
 
-func (t *SubTemplateMultiList) Decode(r io.Reader) error {
-	var err error
+func (t *SubTemplateMultiList) Decode(r io.Reader) (n int, err error) {
 	err = binary.Read(r, binary.BigEndian, &t.semantic)
 	if err != nil {
-		return fmt.Errorf("failed to read list semantic in %T, %w", t, err)
+		return n, fmt.Errorf("failed to read list semantic in %T, %w", t, err)
 	}
 
 	// exhaust the previously sliced buffer
 	lb := make([]byte, t.length-1) // already read one byte of the list buffer for the semantic
-	_, err = r.Read(lb)
+	m, err := r.Read(lb)
+	n += m
 	if err != nil {
-		return fmt.Errorf("failed to read length in %T, %w", t, err)
+		return n, fmt.Errorf("failed to read length in %T, %w", t, err)
 	}
 	listBuffer := bytes.NewBuffer(lb)
 
@@ -167,7 +167,7 @@ func (t *SubTemplateMultiList) Decode(r io.Reader) error {
 
 		err = binary.Read(listBuffer, binary.BigEndian, &subTemplateId)
 		if err != nil {
-			return fmt.Errorf("failed to read sub template id in %T, %w", t, err)
+			return n, fmt.Errorf("failed to read sub template id in %T, %w", t, err)
 		}
 
 		if listBuffer.Len() == 0 {
@@ -177,7 +177,7 @@ func (t *SubTemplateMultiList) Decode(r io.Reader) error {
 
 		err = binary.Read(listBuffer, binary.BigEndian, &subTemplateLength)
 		if err != nil {
-			return fmt.Errorf("failed to read sub template length in %T, %w", t, err)
+			return n, fmt.Errorf("failed to read sub template length in %T, %w", t, err)
 		}
 
 		s := subTemplateListContent{
@@ -186,7 +186,7 @@ func (t *SubTemplateMultiList) Decode(r io.Reader) error {
 		}
 
 		if t.templateManager == nil {
-			return fmt.Errorf("failed to get template (%d,%d), manager is nil", t.observationDomainId, subTemplateId)
+			return n, fmt.Errorf("failed to get template (%d,%d), manager is nil", t.observationDomainId, subTemplateId)
 		}
 
 		tmpl, err := t.templateManager.Get(context.TODO(), TemplateKey{
@@ -194,36 +194,27 @@ func (t *SubTemplateMultiList) Decode(r io.Reader) error {
 			TemplateId:          subTemplateId,
 		})
 		if err != nil {
-			return fmt.Errorf("failed to get template (%d,%d) from manager in %T, %w", t.observationDomainId, subTemplateId, t, err)
-		}
-
-		fields := make([]Field, 0)
-		switch template := tmpl.Record.(type) {
-		case *TemplateRecord:
-			fields = append(fields, template.Fields...)
-		case *OptionsTemplateRecord:
-			fields = append(fields, template.Scopes...)
-			fields = append(fields, template.Options...)
-		default:
-			return fmt.Errorf("expected either TemplateRecord or OptionsTemplateRecord, found %T", template)
+			return n, fmt.Errorf("failed to get template (%d,%d) from manager in %T, %w", t.observationDomainId, subTemplateId, t, err)
 		}
 
 		records := make([]DataRecord, 0)
 		for listBuffer.Len() > 0 {
-			dataFields, err := DecodeUsingTemplate(listBuffer, fields)
-			if err != nil {
-				return err
+			dr := DataRecord{}
+			m, err := dr.With(tmpl).Decode(listBuffer)
+			n += m
+			if err != nil && err != io.EOF {
+				return n, err
 			}
-			subDataRecord := DataRecord{
-				Fields: dataFields,
+			records = append(records, dr)
+			if err == io.EOF {
+				break
 			}
-			records = append(records, subDataRecord)
 		}
 		s.Values = records
 
 		t.value = append(t.value, s)
 	}
-	return err
+	return n, io.EOF
 }
 
 func (t *SubTemplateMultiList) Encode(w io.Writer) (n int, err error) {
@@ -358,12 +349,12 @@ type subTemplateMultiListBuilder struct {
 	observationDomainId uint32
 }
 
-func (t *subTemplateMultiListBuilder) WithTemplateManager(templateManager TemplateCache) TemplateListTypeBuilder {
+func (t *subTemplateMultiListBuilder) WithTemplateCache(templateManager TemplateCache) TemplateListTypeBuilder {
 	t.templateManager = templateManager
 	return t
 }
 
-func (t *subTemplateMultiListBuilder) WithFieldManager(fieldManager FieldCache) TemplateListTypeBuilder {
+func (t *subTemplateMultiListBuilder) WithFieldCache(fieldManager FieldCache) TemplateListTypeBuilder {
 	t.fieldManager = fieldManager
 	return t
 }

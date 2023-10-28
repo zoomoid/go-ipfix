@@ -168,21 +168,27 @@ func (t *SubTemplateList) Elements() []DataRecord {
 	return t.value
 }
 
-func (t *SubTemplateList) Decode(r io.Reader) (err error) {
+func (t *SubTemplateList) Decode(r io.Reader) (n int, err error) {
 	// semantic and listBuffer are included in the length field preceeding
 	// when using variable-length encoding
-	err = binary.Read(r, binary.BigEndian, &t.semantic)
+	b := make([]byte, 1)
+	m, err := r.Read(b)
+	n += m
 	if err != nil {
-		return fmt.Errorf("failed to read list semantic in %T, %w", t, err)
+		return n, fmt.Errorf("failed to read list semantic in %T, %w", t, err)
 	}
+	t.semantic = ListSemantic(uint8(b[0]))
 
-	err = binary.Read(r, binary.BigEndian, &t.templateId)
+	b = make([]byte, 2)
+	m, err = r.Read(b)
+	n += m
 	if err != nil {
-		return fmt.Errorf("failed to read template id in %T, %w", t, err)
+		return n, fmt.Errorf("failed to read template id in %T, %w", t, err)
 	}
+	t.templateId = binary.BigEndian.Uint16(b)
 
 	if t.templateManager == nil {
-		return fmt.Errorf("failed to get template (%d,%d), manager is nil", t.observationDomainId, t.templateId)
+		return n, fmt.Errorf("failed to get template (%d,%d), manager is nil", t.observationDomainId, t.templateId)
 	}
 
 	tmpl, err := t.templateManager.Get(context.TODO(), TemplateKey{
@@ -190,18 +196,7 @@ func (t *SubTemplateList) Decode(r io.Reader) (err error) {
 		TemplateId:          t.templateId,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to get template (%d,%d) from manager in %T, %w", t.observationDomainId, t.templateId, t, err)
-	}
-
-	fields := make([]Field, 0)
-	switch template := tmpl.Record.(type) {
-	case *TemplateRecord:
-		fields = append(fields, template.Fields...)
-	case *OptionsTemplateRecord:
-		fields = append(fields, template.Scopes...)
-		fields = append(fields, template.Options...)
-	default:
-		return fmt.Errorf("expected either TemplateRecord or OptionsTemplateRecord, found %T", template)
+		return n, fmt.Errorf("failed to get template (%d,%d) from manager in %T, %w", t.observationDomainId, t.templateId, t, err)
 	}
 
 	records := make([]DataRecord, 0)
@@ -212,33 +207,34 @@ func (t *SubTemplateList) Decode(r io.Reader) (err error) {
 		// Reading from an empty (also zero-length) bytes.Buffer returns io.EOF,
 		// which we catch explicitly with this
 		t.value = records
-		return nil
+		return
 	}
 
 	// now, as either the FixedLengthField or Field.Decode() in the case of variable-length
 	// fields already determined the length of this DataType, use this length parameter to
 	// read data.
 	lb := make([]byte, t.length-subTemplateListHeaderLength) // we already read 3 bytes from the buffer of valid data for the stl
-	_, err = r.Read(lb)
-	if err != nil {
-		return fmt.Errorf("failed to read from field buffer for decoding %T, %w", t, err)
+	m, err = r.Read(lb)
+	n += m
+	if err != nil && err != io.EOF {
+		return n, fmt.Errorf("failed to read from field buffer for decoding %T, %w", t, err)
 	}
 	listBuffer := bytes.NewBuffer(lb)
 	for listBuffer.Len() > 0 {
-		dataFields, err := DecodeUsingTemplate(listBuffer, fields)
-		if err != nil {
-			return fmt.Errorf("failed to decode sub template from list buffer in %T, %w", t, err)
+		dr := DataRecord{}
+		m, err := dr.With(tmpl).Decode(listBuffer)
+		n += m
+		if err != nil && err != io.EOF {
+			return n, fmt.Errorf("failed to decode sub template from list buffer in %T, %w", t, err)
 		}
-
-		subDataRecord := DataRecord{
-			Fields: dataFields,
+		records = append(records, dr)
+		if err == io.EOF {
+			break
 		}
-
-		records = append(records, subDataRecord)
 	}
 
 	t.value = records
-	return nil
+	return n, io.EOF
 }
 
 func (t *SubTemplateList) Encode(w io.Writer) (n int, err error) {
@@ -316,12 +312,12 @@ type subTemplateListBuilder struct {
 	observationDomainId uint32
 }
 
-func (t *subTemplateListBuilder) WithTemplateManager(templateManager TemplateCache) TemplateListTypeBuilder {
+func (t *subTemplateListBuilder) WithTemplateCache(templateManager TemplateCache) TemplateListTypeBuilder {
 	t.templateManager = templateManager
 	return t
 }
 
-func (t *subTemplateListBuilder) WithFieldManager(fieldManager FieldCache) TemplateListTypeBuilder {
+func (t *subTemplateListBuilder) WithFieldCache(fieldManager FieldCache) TemplateListTypeBuilder {
 	t.fieldManager = fieldManager
 	return t
 }

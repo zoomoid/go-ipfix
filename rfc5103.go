@@ -18,9 +18,17 @@ package ipfix
 
 import "strings"
 
+// ReversePEN is the private enterprise number designated for signaling bidirectional flow information
+// contained in the record. By default, if a field has this PEN, the prototype IE is taken from the IANA
+// IEs (PEN == 0), but the semantic value of the field denotes that the information describes data "in the opposite"
+// direction of the flow. The decoder handles this transparently, i.e., lookup of IEs from the FieldCache is adjusted
+// for.
+//
+// All IANA IEs are reversible, except for the ones listed in nonReversibleFields, which is used to check if the exporter
+// illegaly used the reverse PEN on a field that is not reversible.
 const ReversePEN uint32 = 29305
 
-var NonReversibleFields map[uint16]InformationElement = map[uint16]InformationElement{
+var nonReversibleFields map[uint16]InformationElement = map[uint16]InformationElement{
 	// identifiers per https://datatracker.ietf.org/doc/html/rfc5102#section-5.1
 	10: {
 		Id:   10,
@@ -156,11 +164,18 @@ var NonReversibleFields map[uint16]InformationElement = map[uint16]InformationEl
 	},
 }
 
+// Reversible looks up an IEs membership in the list of irreversible IEs
 func Reversible(fieldId uint16) bool {
-	_, nonReversible := NonReversibleFields[fieldId]
+	_, nonReversible := nonReversibleFields[fieldId]
 	return !nonReversible
 }
 
+// reversedName prefixes a field's usual name with "reversed" in camelCase
+// to textually indicate the presence of PEN 29305.
+//
+// Note that this does only account for the bidirectionality mechanism described in
+// RFC 5103. Other implementors may opt for including designated IEs for reversed and non-reversed
+// information in their registries, *for which this function will NOT return a sensible name*.
 func reversedName(name string) string {
 	s := strings.ToUpper(string([]rune(name)[0:1])) // UTF-8
 	return "reversed" + s + name[1:]

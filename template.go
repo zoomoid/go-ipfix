@@ -49,6 +49,8 @@ type templateRecord interface {
 	Id() uint16
 
 	Encode(io.Writer) (int, error)
+
+	DecodeData(io.Reader) (int, error)
 }
 
 func (tr *Template) WithFieldCache(f FieldCache) *Template {

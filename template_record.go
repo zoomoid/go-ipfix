@@ -78,6 +78,27 @@ func (tr *TemplateRecord) Encode(w io.Writer) (n int, err error) {
 	return n, err
 }
 
+func (tr *TemplateRecord) Decode(r io.Reader) (n int, err error) {
+	t := make([]byte, 2)
+	n, err = r.Read(t)
+	if err != nil {
+		return
+	}
+	tr.TemplateId = binary.BigEndian.Uint16(t)
+
+	m, err := r.Read(t)
+	n += m
+	if err != nil {
+		return
+	}
+	tr.FieldCount = binary.BigEndian.Uint16(t)
+	return
+}
+
+func (tr *TemplateRecord) DecodeData(r io.Reader) (n int, err error) {
+	return
+}
+
 func (tr *TemplateRecord) MarshalJSON() ([]byte, error) {
 	type iotr struct {
 		TemplateId uint16 `json:"template_id,omitempty" yaml:"templateId,omitempty"`

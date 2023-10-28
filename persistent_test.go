@@ -32,7 +32,7 @@ func cacheFactory(file *os.File) (StatefulTemplateCache, error) {
 	// for a field manager with loaded IPFIX fields, see pkg/collector/internal/managers/fields.go
 	fieldManager := NewEphemeralFieldCache(underlyingTemplateCache)
 
-	for id, f := range IPFIX() {
+	for id, f := range IANA() {
 		if f.Id == 0 {
 			f.Id = id
 		}
@@ -74,31 +74,33 @@ func TestPersistentCache(t *testing.T) {
 		// cancel the context from here, which will terminate the goroutine.
 		go cache.Start(context.Background())
 
+		iana := IANA()
+
 		tts := []TemplateRecord{
 			{
 				TemplateId: 300,
 				Fields: []Field{
-					NewFieldBuilder(IPFIX()[2]).Length(4).Complete(),
-					NewFieldBuilder(IPFIX()[150]).Length(4).Complete(),
-					NewFieldBuilder(IPFIX()[10]).Length(2).Complete(),
-					NewFieldBuilder(IPFIX()[14]).Length(2).Complete(),
-					NewFieldBuilder(IPFIX()[4]).Length(1).Complete(),
-					NewFieldBuilder(IPFIX()[6]).Length(2).Complete(),
-					NewFieldBuilder(IPFIX()[1]).Length(4).Complete(),
-					NewFieldBuilder(IPFIX()[7]).Length(2).Complete(),
-					NewFieldBuilder(IPFIX()[11]).Length(2).Complete(),
-					NewFieldBuilder(IPFIX()[8]).Length(4).Complete(),
-					NewFieldBuilder(IPFIX()[12]).Length(4).Complete(),
+					NewFieldBuilder(iana[2]).SetLength(4).Complete(),
+					NewFieldBuilder(iana[150]).SetLength(4).Complete(),
+					NewFieldBuilder(iana[10]).SetLength(2).Complete(),
+					NewFieldBuilder(iana[14]).SetLength(2).Complete(),
+					NewFieldBuilder(iana[4]).SetLength(1).Complete(),
+					NewFieldBuilder(iana[6]).SetLength(2).Complete(),
+					NewFieldBuilder(iana[1]).SetLength(4).Complete(),
+					NewFieldBuilder(iana[7]).SetLength(2).Complete(),
+					NewFieldBuilder(iana[11]).SetLength(2).Complete(),
+					NewFieldBuilder(iana[8]).SetLength(4).Complete(),
+					NewFieldBuilder(iana[12]).SetLength(4).Complete(),
 				},
 			},
 			{
 				TemplateId: 301,
 				Fields: []Field{
-					NewFieldBuilder(IPFIX()[14]).Length(2).Complete(),
-					NewFieldBuilder(IPFIX()[4]).Length(1).Complete(),
-					NewFieldBuilder(IPFIX()[6]).Length(2).Complete(),
-					NewFieldBuilder(IPFIX()[1]).Length(4).Complete(),
-					NewFieldBuilder(IPFIX()[7]).Length(2).Complete(),
+					NewFieldBuilder(iana[14]).SetLength(2).Complete(),
+					NewFieldBuilder(iana[4]).SetLength(1).Complete(),
+					NewFieldBuilder(iana[6]).SetLength(2).Complete(),
+					NewFieldBuilder(iana[1]).SetLength(4).Complete(),
+					NewFieldBuilder(iana[7]).SetLength(2).Complete(),
 				},
 			},
 		}
@@ -108,17 +110,17 @@ func TestPersistentCache(t *testing.T) {
 				FieldCount:      9,
 				ScopeFieldCount: 2,
 				Scopes: []Field{
-					NewFieldBuilder(IPFIX()[346]).Length(4).Complete(),
-					NewFieldBuilder(IPFIX()[303]).Length(2).Complete(),
+					NewFieldBuilder(iana[346]).SetLength(4).Complete(),
+					NewFieldBuilder(iana[303]).SetLength(2).Complete(),
 				},
 				Options: []Field{
-					NewFieldBuilder(IPFIX()[339]).Length(1).Complete(),
-					NewFieldBuilder(IPFIX()[344]).Length(1).Complete(),
-					NewFieldBuilder(IPFIX()[345]).Length(2).Complete(),
-					NewFieldBuilder(IPFIX()[342]).Length(8).Complete(),
-					NewFieldBuilder(IPFIX()[343]).Length(8).Complete(),
-					NewFieldBuilder(IPFIX()[341]).Length(FieldVariableLength).Complete(),
-					NewFieldBuilder(IPFIX()[340]).Length(FieldVariableLength).Complete(),
+					NewFieldBuilder(iana[339]).SetLength(1).Complete(),
+					NewFieldBuilder(iana[344]).SetLength(1).Complete(),
+					NewFieldBuilder(iana[345]).SetLength(2).Complete(),
+					NewFieldBuilder(iana[342]).SetLength(8).Complete(),
+					NewFieldBuilder(iana[343]).SetLength(8).Complete(),
+					NewFieldBuilder(iana[341]).SetLength(FieldVariableLength).Complete(),
+					NewFieldBuilder(iana[340]).SetLength(FieldVariableLength).Complete(),
 				},
 			},
 		}

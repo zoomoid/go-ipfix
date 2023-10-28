@@ -35,7 +35,7 @@ func TestSigned64(t *testing.T) {
 			// two's complement of -1 is 0xFFFFFFFF..
 			in := []byte{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}
 			v := NewSigned64().WithLength(7)()
-			err := v.Decode(bytes.NewBuffer(in))
+			_, err := v.Decode(bytes.NewBuffer(in))
 			if err != nil {
 				t.Error(err)
 				t.Fail()
@@ -51,7 +51,7 @@ func TestSigned64(t *testing.T) {
 			binary.BigEndian.PutUint64(b, uint64(inInt64))
 			in := b[1:8]
 			v := NewSigned64().WithLength(7)()
-			err := v.Decode(bytes.NewBuffer(in))
+			_, err := v.Decode(bytes.NewBuffer(in))
 			if err != nil {
 				t.Error(err)
 				t.Fail()
@@ -67,7 +67,7 @@ func TestSigned64(t *testing.T) {
 			binary.BigEndian.PutUint64(b, uint64(inInt64))
 			in := b[1:8]
 			v := NewSigned64().WithLength(7)()
-			err := v.Decode(bytes.NewBuffer(in))
+			_, err := v.Decode(bytes.NewBuffer(in))
 			if err != nil {
 				t.Error(err)
 				t.Fail()

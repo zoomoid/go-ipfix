@@ -86,11 +86,11 @@ func (*MacAddress) IsReducedLength() bool {
 	return false
 }
 
-func (t *MacAddress) Decode(in io.Reader) error {
+func (t *MacAddress) Decode(in io.Reader) (n int, err error) {
 	b := make([]byte, t.Length())
-	_, err := in.Read(b)
+	n, err = in.Read(b)
 	if err != nil {
-		return fmt.Errorf("failed to read data in %T, %w", t, err)
+		return n, fmt.Errorf("failed to read data in %T, %w", t, err)
 	}
 	// octs := make([]string, len(b))
 	// for i, oct := range b {
@@ -102,7 +102,7 @@ func (t *MacAddress) Decode(in io.Reader) error {
 	// 	return fmt.Errorf("failed to parse MAC from string %s in %T, %w", t, string(b), err)
 	// }
 	// t.value = mac
-	return nil
+	return
 }
 
 func (t *MacAddress) Encode(w io.Writer) (int, error) {

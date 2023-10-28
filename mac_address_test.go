@@ -25,7 +25,7 @@ func TestMacAddress(t *testing.T) {
 	raw := []byte{0xac, 0x74, 0xb1, 0x88, 0x3a, 0xa5}
 
 	mac := &MacAddress{}
-	err := mac.Decode(bytes.NewBuffer(raw))
+	_, err := mac.Decode(bytes.NewBuffer(raw))
 	if err != nil {
 		t.Fatal(err)
 	}

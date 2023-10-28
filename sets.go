@@ -19,6 +19,7 @@ package ipfix
 import (
 	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 )
@@ -27,6 +28,7 @@ type set interface {
 	Length() int
 
 	Encode(io.Writer) (int, error)
+	// Decode(io.Reader) (int, error)
 }
 
 type Set struct {
@@ -154,6 +156,11 @@ func (fs *Set) UnmarshalJSON(in []byte) error {
 
 type DataSet struct {
 	Records []DataRecord `json:"records,omitempty" yaml:"records,omitempty"`
+
+	fieldCache    FieldCache
+	templateCache TemplateCache
+
+	template *Template
 }
 
 func (d *DataSet) Length() int {
@@ -171,8 +178,40 @@ func (d *DataSet) Encode(w io.Writer) (n int, err error) {
 	return n, nil
 }
 
+func (d *DataSet) With(t *Template) *DataSet {
+	d.template = t
+	return d
+}
+
+func (d *DataSet) Decode(r io.Reader) (n int, err error) {
+	if d.template == nil {
+		return 0, errors.New("no template bound to data record")
+	}
+
+	for {
+		dr := DataRecord{
+			template:   d.template,
+			TemplateId: d.template.TemplateId,
+		}
+		m, err := dr.Decode(r)
+		n += m
+		if err != nil && err == io.EOF {
+			return n, err
+		}
+		d.Records = append(d.Records, dr)
+		if err == io.EOF {
+			break
+		}
+	}
+
+	return
+}
+
 type TemplateSet struct {
 	Records []TemplateRecord `json:"records,omitempty" yaml:"records,omitempty"`
+
+	fieldCache    FieldCache
+	templateCache TemplateCache
 }
 
 func (d *TemplateSet) Length() int {
@@ -190,8 +229,45 @@ func (d *TemplateSet) Encode(w io.Writer) (n int, err error) {
 	return n, nil
 }
 
+func (d *TemplateSet) Decode(r io.Reader) (n int, err error) {
+	d.Records = make([]TemplateRecord, 0)
+	// "as long as there's set header data (Set ID, Length)"
+	for {
+		templateRecord := TemplateRecord{}
+
+		m, err := templateRecord.Decode(r)
+		n += m
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return n, err
+		}
+
+		if templateRecord.FieldCount == 0 {
+			return n, errors.New("fieldCount may not be zero")
+		}
+
+		templateFields := make([]Field, int(templateRecord.FieldCount))
+		for i := 0; i < int(templateRecord.FieldCount); i++ {
+			field, err := decodeTemplateField(r, d.fieldCache, d.templateCache)
+			if err != nil {
+				return n, err
+			}
+
+			templateFields[i] = field
+		}
+		templateRecord.Fields = templateFields
+		d.Records = append(d.Records, templateRecord)
+	}
+	return
+}
+
 type OptionsTemplateSet struct {
 	Records []OptionsTemplateRecord `json:"records,omitempty" yaml:"records,omitempty"`
+
+	fieldCache    FieldCache
+	templateCache TemplateCache
 }
 
 func (d *OptionsTemplateSet) Length() int {
@@ -209,16 +285,63 @@ func (d *OptionsTemplateSet) Encode(w io.Writer) (n int, err error) {
 	return n, nil
 }
 
-var (
+func (d *OptionsTemplateSet) Decode(r io.Reader) (n int, err error) {
+	d.Records = make([]OptionsTemplateRecord, 0)
+	// TODO(zoomoid): maybe we need this for bound checks...
+	// for r.Len() >= 4 {
+	for {
+		record := OptionsTemplateRecord{}
+
+		m, err := record.Decode(r)
+		n += m
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return n, err
+		}
+
+		if record.ScopeFieldCount == 0 {
+			return n, errors.New("scopeFieldCount may not be zero")
+		}
+
+		scopeFields := make([]Field, int(record.ScopeFieldCount))
+		for i := 0; i < int(record.ScopeFieldCount); i++ {
+			field, err := decodeTemplateField(r, d.fieldCache, d.templateCache)
+			if err != nil {
+				return n, err
+			}
+			// mark field as scoped
+			field.Scoped()
+
+			scopeFields[i] = field
+		}
+		record.Scopes = scopeFields
+
+		// optionsSize is the number of fields that remain after the scopes in the Options Template record
+		optionsSize := int(record.FieldCount) - int(record.ScopeFieldCount)
+		if optionsSize < 0 {
+			return n, errors.New("negative length OptionsTemplateSet")
+		}
+		optionsFields := make([]Field, optionsSize)
+		for i := 0; i < optionsSize; i++ {
+			field, err := decodeTemplateField(r, d.fieldCache, d.templateCache)
+			if err != nil {
+				return n, err
+			}
+
+			optionsFields[i] = field
+		}
+		record.Options = optionsFields
+		d.Records = append(d.Records, record)
+	}
+	return
+}
+
+// The Kind* constants are used for unmarshalling of JSON records to denote the specific type
+// into which the elements of a set should be unmarshalled in.
+const (
 	KindDataRecord            string = "DataRecord"
 	KindTemplateRecord        string = "TemplateRecord"
 	KindOptionsTemplateRecord string = "OptionsTemplateRecord"
-)
-
-var (
-	KnownKinds map[string]struct{} = map[string]struct{}{
-		"DataRecord":            {},
-		"TemplateRecord":        {},
-		"OptionsTemplateRecord": {},
-	}
 )
