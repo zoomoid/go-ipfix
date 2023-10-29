@@ -49,8 +49,6 @@ type templateRecord interface {
 	Id() uint16
 
 	Encode(io.Writer) (int, error)
-
-	DecodeData(io.Reader) (int, error)
 }
 
 func (tr *Template) WithFieldCache(f FieldCache) *Template {
@@ -105,8 +103,8 @@ func (t *Template) UnmarshalJSON(in []byte) error {
 	switch it.Kind {
 	case KindTemplateRecord:
 		tr := TemplateRecord{
-			FieldManager:    t.fieldCache,
-			TemplateManager: t.templateCache,
+			fieldCache:    t.fieldCache,
+			templateCache: t.templateCache,
 		}
 		err := json.Unmarshal(it.Record, &tr)
 		if err != nil {
@@ -115,8 +113,8 @@ func (t *Template) UnmarshalJSON(in []byte) error {
 		t.Record = &tr
 	case KindOptionsTemplateRecord:
 		otr := OptionsTemplateRecord{
-			FieldManager:    t.fieldCache,
-			TemplateManager: t.templateCache,
+			fieldCache:    t.fieldCache,
+			templateCache: t.templateCache,
 		}
 		err := json.Unmarshal(it.Record, &otr)
 		if err != nil {

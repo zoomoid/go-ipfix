@@ -17,8 +17,10 @@ limitations under the License.
 package ipfix
 
 import (
+	"context"
 	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"io"
 )
 
@@ -30,8 +32,8 @@ type OptionsTemplateRecord struct {
 	Scopes  []Field `json:"scopes,omitempty" yaml:"scopes,omitempty"`
 	Options []Field `json:"options,omitempty" yaml:"options,omitempty"`
 
-	FieldManager    FieldCache    `json:"-"`
-	TemplateManager TemplateCache `json:"-"`
+	fieldCache    FieldCache
+	templateCache TemplateCache
 }
 
 var _ templateRecord = &OptionsTemplateRecord{}
@@ -45,24 +47,138 @@ func (otr *OptionsTemplateRecord) Id() uint16 {
 }
 
 func (otr *OptionsTemplateRecord) Decode(r io.Reader) (n int, err error) {
-	t := make([]byte, 2)
-	n, err = r.Read(t)
-	if err != nil {
-		return
-	}
-	otr.TemplateId = binary.BigEndian.Uint16(t)
+	{
+		// option template record header
+		t := make([]byte, 2)
+		n, err = r.Read(t)
+		if err != nil {
+			return n, err
+		}
+		otr.TemplateId = binary.BigEndian.Uint16(t)
 
-	m, err := r.Read(t)
-	n += m
-	if err != nil {
-		return
+		m, err := r.Read(t)
+		n += m
+		if err != nil {
+			return n, err
+		}
+		otr.FieldCount = binary.BigEndian.Uint16(t)
+
+		m, err = r.Read(t)
+		n += m
+		if err != nil {
+			return n, err
+		}
+		otr.ScopeFieldCount = binary.BigEndian.Uint16(t)
+
+		if otr.ScopeFieldCount == 0 {
+			return n, errors.New("scopeFieldCount may not be zero")
+		}
 	}
-	otr.FieldCount = binary.BigEndian.Uint16(t)
-	return
+
+	otr.Scopes = make([]Field, 0, int(otr.ScopeFieldCount))
+	for i := 0; i < int(otr.ScopeFieldCount); i++ {
+		m, err := otr.decodeScopeField(r)
+		n += m
+		if err != nil {
+			return n, err
+		}
+	}
+
+	// optionsSize is the number of fields that remain after the scopes in the Options Template record
+	optionsSize := int(otr.FieldCount) - int(otr.ScopeFieldCount)
+	if optionsSize < 0 {
+		return n, errors.New("negative length OptionsTemplateSet")
+	}
+	otr.Options = make([]Field, optionsSize)
+	for i := 0; i < optionsSize; i++ {
+		m, err := otr.decodeOptionsField(r)
+		n += m
+		if err != nil {
+			return n, err
+		}
+	}
+
+	return n, nil
 }
 
-func (otr *OptionsTemplateRecord) DecodeData(r io.Reader) (n int, err error) {
-	return
+func (otr *OptionsTemplateRecord) decodeScopeField(r io.Reader) (n int, err error) {
+	f, n, err := otr.decodeTemplateField(r)
+	if err != nil {
+		return n, err
+	}
+	// TODO(zoomoid): this "should" work without reassignment because f is a pointer receiver
+	f = f.SetScoped()
+	otr.Scopes = append(otr.Scopes, f)
+	return n, err
+}
+
+func (otr *OptionsTemplateRecord) decodeOptionsField(r io.Reader) (n int, err error) {
+	f, n, err := otr.decodeTemplateField(r)
+	if err != nil {
+		return n, err
+	}
+	otr.Options = append(otr.Options, f)
+	return n, err
+}
+
+func (otr *OptionsTemplateRecord) decodeTemplateField(r io.Reader) (f Field, n int, err error) {
+	var rawFieldId, fieldId, fieldLength uint16
+	var enterpriseId uint32
+	var reverse bool
+
+	b := make([]byte, 2)
+	m, err := r.Read(b)
+	n += m
+	if err != nil {
+		return nil, n, err
+	}
+	rawFieldId = binary.BigEndian.Uint16(b)
+
+	penMask := uint16(0x8000)
+	fieldId = (^penMask) & rawFieldId
+
+	// length announcement via the template: this is either fixed or variable (i.e., 0xFFFF).
+	// The FieldBuilder will therefore either create a fixed-length or variable-length field
+	// on FieldBuilder.Complete()
+	m, err = r.Read(b)
+	n += m
+	if err != nil {
+		return nil, n, err
+	}
+	fieldLength = binary.BigEndian.Uint16(b)
+
+	// private enterprise number parsing
+	if rawFieldId >= 0x8000 {
+		// first bit is 1, therefore this is a enterprise-specific IE
+		b := make([]byte, 4)
+		m, err := r.Read(b)
+		n += m
+		if err != nil {
+			return nil, n, err
+		}
+		enterpriseId = binary.BigEndian.Uint32(b)
+
+		if enterpriseId == ReversePEN && Reversible(fieldId) {
+			reverse = true
+			// clear enterprise id, because this would obscure lookup
+			enterpriseId = 0
+		}
+	}
+
+	fieldBuilder, err := otr.fieldCache.GetBuilder(context.TODO(), NewFieldKey(enterpriseId, fieldId))
+	if err != nil {
+		return nil, n, err
+	}
+
+	f = fieldBuilder.
+		SetLength(fieldLength).
+		SetPEN(enterpriseId).
+		SetReversed(reverse).
+		SetFieldManager(otr.fieldCache).
+		SetTemplateManager(otr.templateCache).
+		Complete()
+
+	return f, n, nil
 }
 
 func (otr *OptionsTemplateRecord) Encode(w io.Writer) (n int, err error) {
@@ -177,14 +293,14 @@ func (otr *OptionsTemplateRecord) UnmarshalJSON(in []byte) error {
 	ss := make([]Field, 0, len(t.Scopes))
 	for _, cf := range t.Scopes {
 		// TODO(zoomoid): check if this is ok, i.e., "we don't need the FieldManager and TemplateManager here anymore"
-		ss = append(ss, cf.Restore(otr.FieldManager, otr.TemplateManager))
+		ss = append(ss, cf.Restore(otr.fieldCache, otr.templateCache))
 	}
 	otr.Scopes = ss
 
 	os := make([]Field, 0, len(t.Options))
 	for _, cf := range t.Scopes {
 		// TODO(zoomoid): check if this is ok, i.e., "we don't need the FieldManager and TemplateManager here anymore"
-		os = append(os, cf.Restore(otr.FieldManager, otr.TemplateManager))
+		os = append(os, cf.Restore(otr.fieldCache, otr.templateCache))
 	}
 	otr.Options = os
 

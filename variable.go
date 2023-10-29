@@ -112,7 +112,8 @@ func (f *VariableLengthField) Decode(r io.Reader) (int, error) {
 		f.longLengthFormat = true
 		// read two more bytes denoting a length up to 2^16 bytes
 		b := make([]byte, 2)
-		n, err := r.Read(b)
+		m, err := r.Read(b)
+		n += m
 		if err != nil {
 			return n, err
 		}
@@ -130,10 +131,10 @@ func (f *VariableLengthField) Decode(r io.Reader) (int, error) {
 		return n, err
 	}
 
-	m, err = f.value.
-		SetLength(length).           // set the decoded length here, such that the subsequent DataType-level decoder consumes the right amount of bytes
+	// already "read" the number of bytes passed down to the DataType decoder so no need to add it again
+	_, err = f.value.
+		SetLength(length).           // set the decoded length here, such that the subsequent DataType level decoder consumes the right amount of bytes
 		Decode(bytes.NewBuffer(buf)) // hand down a new buffer such that the parsing cannot overflow the original buffer
-	n += m
 	return n, err
 }
 
@@ -245,7 +246,7 @@ func (f *VariableLengthField) ObservationDomainId() uint32 {
 	return f.observationDomainId
 }
 
-func (f *VariableLengthField) Scoped() Field {
+func (f *VariableLengthField) SetScoped() Field {
 	f.isScope = true
 	return f
 }

@@ -301,10 +301,6 @@ func (d *OptionsTemplateSet) Decode(r io.Reader) (n int, err error) {
 			return n, err
 		}
 
-		if record.ScopeFieldCount == 0 {
-			return n, errors.New("scopeFieldCount may not be zero")
-		}
-
 		scopeFields := make([]Field, int(record.ScopeFieldCount))
 		for i := 0; i < int(record.ScopeFieldCount); i++ {
 			field, err := decodeTemplateField(r, d.fieldCache, d.templateCache)
@@ -312,7 +308,7 @@ func (d *OptionsTemplateSet) Decode(r io.Reader) (n int, err error) {
 				return n, err
 			}
 			// mark field as scoped
-			field.Scoped()
+			field.SetScoped()
 
 			scopeFields[i] = field
 		}

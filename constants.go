@@ -22,19 +22,31 @@ import (
 )
 
 var (
-	ianaIpfixIEs map[uint16]InformationElement
-
-	//go:embed  hack/ipfix-information-elements.csv
+	//go:embed hack/ipfix-information-elements.csv
 	spec embed.FS
+
+	ianaIpfixIEs map[uint16]InformationElement = MustReadCSV(mustReadFile(spec.ReadFile("hack/ipfix-information-elements.csv")))
 )
 
 func init() {
-	iif, _ := spec.ReadFile("ipfix-information-elements.csv")
-	ib := bytes.NewBuffer(iif)
+	initGlobalIANARegistry()
+}
 
-	ianaIpfixIEs = MustReadCSV(ib)
+func initGlobalIANARegistry() {
+	ianaIpfixIEs = MustReadCSV(mustReadFile(spec.ReadFile("hack/ipfix-information-elements.csv")))
 }
 
 func IANA() map[uint16]InformationElement {
+	if len(ianaIpfixIEs) == 0 {
+		initGlobalIANARegistry()
+	}
+
 	return ianaIpfixIEs
+}
+
+func mustReadFile(f []byte, err error) *bytes.Buffer {
+	if err != nil {
+		panic(err)
+	}
+	return bytes.NewBuffer(f)
 }

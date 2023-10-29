@@ -17,6 +17,7 @@ limitations under the License.
 package ipfix
 
 import (
+	"context"
 	"encoding/binary"
 	"encoding/json"
 	"io"
@@ -28,8 +29,8 @@ type TemplateRecord struct {
 
 	Fields []Field `json:"fields,omitempty"`
 
-	TemplateManager TemplateCache `json:"-"`
-	FieldManager    FieldCache    `json:"-"`
+	fieldCache    FieldCache
+	templateCache TemplateCache
 }
 
 var _ templateRecord = &TemplateRecord{}
@@ -75,28 +76,99 @@ func (tr *TemplateRecord) Encode(w io.Writer) (n int, err error) {
 			return n, err
 		}
 	}
-	return n, err
+	return n, nil
 }
 
 func (tr *TemplateRecord) Decode(r io.Reader) (n int, err error) {
-	t := make([]byte, 2)
-	n, err = r.Read(t)
-	if err != nil {
-		return
-	}
-	tr.TemplateId = binary.BigEndian.Uint16(t)
+	{
+		// template record header
+		t := make([]byte, 2)
+		n, err = r.Read(t)
+		if err != nil {
+			return n, err
+		}
+		tr.TemplateId = binary.BigEndian.Uint16(t)
 
-	m, err := r.Read(t)
-	n += m
-	if err != nil {
-		return
+		m, err := r.Read(t)
+		n += m
+		if err != nil {
+			return n, err
+		}
+		tr.FieldCount = binary.BigEndian.Uint16(t)
 	}
-	tr.FieldCount = binary.BigEndian.Uint16(t)
-	return
+
+	// we use this form because tr.decodeTemplateField uses append
+	tr.Fields = make([]Field, 0, int(tr.FieldCount))
+
+	for i := 0; i < int(tr.FieldCount); i++ {
+		m, err := tr.decodeTemplateField(r)
+		n += m
+		if err != nil {
+			return n, err
+		}
+	}
+	return n, nil
 }
 
-func (tr *TemplateRecord) DecodeData(r io.Reader) (n int, err error) {
-	return
+func (tr *TemplateRecord) decodeTemplateField(r io.Reader) (n int, err error) {
+	var rawFieldId, fieldId, fieldLength uint16
+	var enterpriseId uint32
+	var reverse bool
+
+	b := make([]byte, 2)
+	m, err := r.Read(b)
+	n += m
+	if err != nil {
+		return n, err
+	}
+	rawFieldId = binary.BigEndian.Uint16(b)
+
+	penMask := uint16(0x8000)
+	fieldId = (^penMask) & rawFieldId
+
+	// length announcement via the template: this is either fixed or variable (i.e., 0xFFFF).
+	// The FieldBuilder will therefore either create a fixed-length or variable-length field
+	// on FieldBuilder.Complete()
+	m, err = r.Read(b)
+	n += m
+	if err != nil {
+		return n, err
+	}
+	fieldLength = binary.BigEndian.Uint16(b)
+
+	// private enterprise number parsing
+	if rawFieldId >= 0x8000 {
+		// first bit is 1, therefore this is a enterprise-specific IE
+		b := make([]byte, 4)
+		m, err := r.Read(b)
+		n += m
+		if err != nil {
+			return n, err
+		}
+		enterpriseId = binary.BigEndian.Uint32(b)
+
+		if enterpriseId == ReversePEN && Reversible(fieldId) {
+			reverse = true
+			// clear enterprise id, because this would obscure lookup
+			enterpriseId = 0
+		}
+	}
+
+	fieldBuilder, err := tr.fieldCache.GetBuilder(context.TODO(), NewFieldKey(enterpriseId, fieldId))
+	if err != nil {
+		return n, err
+	}
+
+	f := fieldBuilder.
+		SetLength(fieldLength).
+		SetPEN(enterpriseId).
+		SetReversed(reverse).
+		SetFieldManager(tr.fieldCache).
+		SetTemplateManager(tr.templateCache).
+		Complete()
+
+	tr.Fields = append(tr.Fields, f)
+	return n, nil
 }
 
 func (tr *TemplateRecord) MarshalJSON() ([]byte, error) {
@@ -141,7 +213,7 @@ func (tr *TemplateRecord) UnmarshalJSON(in []byte) error {
 	fs := make([]Field, 0, len(t.Fields))
 	for _, cf := range t.Fields {
 		// tr.fieldManager and tr.templateManager can still be nil
-		fs = append(fs, cf.Restore(tr.FieldManager, tr.TemplateManager))
+		fs = append(fs, cf.Restore(tr.fieldCache, tr.templateCache))
 	}
 	tr.Fields = fs
 

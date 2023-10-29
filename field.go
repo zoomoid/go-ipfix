@@ -107,8 +107,8 @@ type Field interface {
 	// instances.
 	Clone() Field
 
-	// Setter to be used when the field is a scope field.
-	Scoped() Field
+	// SetScoped is the setter to be used when the field is a scope field.
+	SetScoped() Field
 
 	// IsScope returns true if the field is set to be a scope field. This is
 	// useful when encoding to a map structure in e.g. encoding/libfds, as scope

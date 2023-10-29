@@ -145,7 +145,7 @@ func (f *FixedLengthField) ObservationDomainId() uint32 {
 	return f.observationDomainId
 }
 
-func (f *FixedLengthField) Scoped() Field {
+func (f *FixedLengthField) SetScoped() Field {
 	f.isScope = true
 	return f
 }
