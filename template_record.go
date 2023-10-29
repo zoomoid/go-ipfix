@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"io"
 )
 
@@ -95,6 +96,9 @@ func (tr *TemplateRecord) Decode(r io.Reader) (n int, err error) {
 			return n, err
 		}
 		tr.FieldCount = binary.BigEndian.Uint16(t)
+		if tr.FieldCount == 0 {
+			return n, errors.New("template record field count must not be zero")
+		}
 	}
 
 	// we use this form because tr.decodeTemplateField uses append

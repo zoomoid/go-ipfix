@@ -243,22 +243,6 @@ func (d *TemplateSet) Decode(r io.Reader) (n int, err error) {
 			}
 			return n, err
 		}
-
-		if templateRecord.FieldCount == 0 {
-			return n, errors.New("fieldCount may not be zero")
-		}
-
-		templateFields := make([]Field, int(templateRecord.FieldCount))
-		for i := 0; i < int(templateRecord.FieldCount); i++ {
-			field, err := decodeTemplateField(r, d.fieldCache, d.templateCache)
-			if err != nil {
-				return n, err
-			}
-
-			templateFields[i] = field
-		}
-		templateRecord.Fields = templateFields
-		d.Records = append(d.Records, templateRecord)
 	}
 	return
 }
@@ -300,36 +284,6 @@ func (d *OptionsTemplateSet) Decode(r io.Reader) (n int, err error) {
 			}
 			return n, err
 		}
-
-		scopeFields := make([]Field, int(record.ScopeFieldCount))
-		for i := 0; i < int(record.ScopeFieldCount); i++ {
-			field, err := decodeTemplateField(r, d.fieldCache, d.templateCache)
-			if err != nil {
-				return n, err
-			}
-			// mark field as scoped
-			field.SetScoped()
-
-			scopeFields[i] = field
-		}
-		record.Scopes = scopeFields
-
-		// optionsSize is the number of fields that remain after the scopes in the Options Template record
-		optionsSize := int(record.FieldCount) - int(record.ScopeFieldCount)
-		if optionsSize < 0 {
-			return n, errors.New("negative length OptionsTemplateSet")
-		}
-		optionsFields := make([]Field, optionsSize)
-		for i := 0; i < optionsSize; i++ {
-			field, err := decodeTemplateField(r, d.fieldCache, d.templateCache)
-			if err != nil {
-				return n, err
-			}
-
-			optionsFields[i] = field
-		}
-		record.Options = optionsFields
-		d.Records = append(d.Records, record)
 	}
 	return
 }

@@ -71,7 +71,7 @@ func (otr *OptionsTemplateRecord) Decode(r io.Reader) (n int, err error) {
 		otr.ScopeFieldCount = binary.BigEndian.Uint16(t)
 
 		if otr.ScopeFieldCount == 0 {
-			return n, errors.New("scopeFieldCount may not be zero")
+			return n, errors.New("options template record scope field count must not be zero")
 		}
 	}
 
