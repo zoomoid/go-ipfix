@@ -65,7 +65,7 @@ func NewUDPListener(bindAddr string) *UDPListener {
 }
 
 func (l *UDPListener) Listen(ctx context.Context) (err error) {
-	logger := fromContext(ctx)
+	logger := FromContext(ctx)
 	// do this last such that the goroutine reading packets exits before closing the channel
 	defer close(l.packetCh)
 	l.addr, err = net.ResolveUDPAddr("udp", l.bindAddr)

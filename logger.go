@@ -35,7 +35,7 @@ func SetLogger(l logr.Logger) {
 	dlog.Fulfill(l.GetSink())
 }
 
-func fromContext(ctx context.Context, keysAndValues ...interface{}) logr.Logger {
+func FromContext(ctx context.Context, keysAndValues ...interface{}) logr.Logger {
 	log := Log
 	if ctx != nil {
 		if logger, err := logr.FromContext(ctx); err == nil {

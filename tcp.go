@@ -44,7 +44,7 @@ func New(bindAddr string) *TCPListener {
 }
 
 func (l *TCPListener) Listen(ctx context.Context) (err error) {
-	logger := fromContext(ctx)
+	logger := FromContext(ctx)
 
 	l.addr, err = net.ResolveTCPAddr("tcp", l.bindAddr)
 	if err != nil {
@@ -190,7 +190,7 @@ func (s *session) messages() <-chan []byte {
 
 // receive successively reads from the connection's reader to piece together a message
 func (s *session) receive(ctx context.Context) error {
-	logger := fromContext(ctx)
+	logger := FromContext(ctx)
 	// working on header bytes
 	if s.offset < ipfixMessageHeaderLength {
 		_, err := s.receiveHeader()
