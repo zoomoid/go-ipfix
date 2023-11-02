@@ -101,8 +101,13 @@ func (t *BasicList) String() string {
 }
 
 // Type returns "basicList" indicating the data type, e.g., for serialization
-func (*BasicList) Type() string {
-	return "basicList"
+func (t *BasicList) Type() string {
+	typ := ""
+	if len(t.value) > 0 && t.value[0] != nil {
+		// basicList data type is implied to contain only same-typed elements, so sampling the first is fine for determining the type's name
+		typ = "<" + t.value[0].Type() + ">"
+	}
+	return "basicList" + typ
 }
 
 // Value returns the internal value of the BasicList object as a type-assertable interface.
@@ -433,7 +438,7 @@ func (t *BasicList) UnmarshalJSON(in []byte) error {
 
 	fs := make([]Field, 0, len(ff.Elements))
 	for _, el := range ff.Elements {
-		v := NewFieldBuilder(InformationElement{
+		v := NewFieldBuilder(&InformationElement{ // TODO(zoomoid): this defines a new IE *ad-hoc* instead of using fieldCache
 			Constructor: LookupConstructor(el.Type),
 		}).Complete()
 		err := v.UnmarshalJSON(el.Value)
