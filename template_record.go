@@ -21,6 +21,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 )
 
@@ -35,9 +36,19 @@ type TemplateRecord struct {
 }
 
 var _ templateRecord = &TemplateRecord{}
+var _ fmt.Stringer = &TemplateRecord{}
+
+func (tr *TemplateRecord) String() string {
+	sl := make([]string, 0, len(tr.Fields))
+	for _, f := range tr.Fields {
+		sl = append(sl, f.String())
+	}
+
+	return fmt.Sprintf("<id=%d,len=%d>%v", tr.TemplateId, tr.FieldCount, sl)
+}
 
 func (tr *TemplateRecord) Type() string {
-	return KindTemplateRecord
+	return KindTemplateSet
 }
 
 func (tr *TemplateRecord) Id() uint16 {

@@ -160,7 +160,7 @@ func (d *Decoder) Decode(ctx context.Context, payload *bytes.Buffer) (msg *Messa
 
 			set = Set{
 				SetHeader: h,
-				Kind:      KindTemplateRecord,
+				Kind:      KindTemplateSet,
 				Set:       &ts,
 			}
 
@@ -193,7 +193,7 @@ func (d *Decoder) Decode(ctx context.Context, payload *bytes.Buffer) (msg *Messa
 
 			set = Set{
 				SetHeader: h,
-				Kind:      KindOptionsTemplateRecord,
+				Kind:      KindOptionsTemplateSet,
 				Set:       ots,
 			}
 
@@ -233,7 +233,7 @@ func (d *Decoder) Decode(ctx context.Context, payload *bytes.Buffer) (msg *Messa
 
 			set = Set{
 				SetHeader: h,
-				Kind:      KindDataRecord,
+				Kind:      KindDataSet,
 				Set:       ds,
 			}
 		} else {
@@ -257,7 +257,7 @@ func (d *Decoder) initMetrics() {
 	PacketsTotal.Add(0)
 	ErrorsTotal.Add(0)
 	DurationMicroseconds.Observe(0)
-	for _, kind := range []string{KindDataRecord, KindTemplateRecord, KindOptionsTemplateRecord} {
+	for _, kind := range []string{KindDataSet, KindTemplateSet, KindOptionsTemplateSet} {
 		DecodedSets.WithLabelValues(kind).Add(0)
 		DecodedRecords.WithLabelValues(kind).Add(0)
 		DroppedRecords.WithLabelValues(kind).Add(0)

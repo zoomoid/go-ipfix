@@ -27,7 +27,7 @@ const (
 )
 
 type FieldBuilder struct {
-	prototype InformationElement
+	prototype *InformationElement
 	length    uint16
 
 	reverse bool
@@ -41,13 +41,13 @@ type FieldBuilder struct {
 var _ json.Marshaler = &FieldBuilder{}
 var _ json.Unmarshaler = &FieldBuilder{}
 
-func NewFieldBuilder(ie InformationElement) *FieldBuilder {
+func NewFieldBuilder(ie *InformationElement) *FieldBuilder {
 	return &FieldBuilder{
 		prototype: ie,
 	}
 }
 
-func (b *FieldBuilder) GetIE() InformationElement {
+func (b *FieldBuilder) GetIE() *InformationElement {
 	return b.prototype
 }
 
@@ -182,10 +182,10 @@ func (b *dataTypeBuilder) Complete() DataTypeConstructor {
 }
 
 type consolidatedFieldBuilder struct {
-	Prototype           InformationElement `json:"prototype,omitempty"`
-	ObservationDomainId uint32             `json:"observation_domain_id,omitempty"`
-	Length              uint16             `json:"length,omitempty"`
-	Reverse             bool               `json:"reverse,omitempty"`
+	Prototype           *InformationElement `json:"prototype,omitempty"`
+	ObservationDomainId uint32              `json:"observation_domain_id,omitempty"`
+	Length              uint16              `json:"length,omitempty"`
+	Reverse             bool                `json:"reverse,omitempty"`
 }
 
 func (b *FieldBuilder) MarshalJSON() ([]byte, error) {

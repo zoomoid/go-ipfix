@@ -18,6 +18,7 @@ package ipfix
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"strings"
 
@@ -84,10 +85,9 @@ type Field interface {
 	// decoding will not work correctly.
 	ObservationDomainId() uint32
 
-	// Prototype returns a copy of the field's IE specification, i.e., the
-	// prototype of the field. This can be used for cloning and copying of the
-	// field while preserving semantics
-	Prototype() InformationElement
+	// Prototype returns the field's IE specification, i.e., the prototype of the field.
+	// This can be used for cloning and copying of the field while preserving semantics
+	Prototype() *InformationElement
 
 	// Lift converts a field to a variable-length field, indicating this to the
 	// data type constructor
@@ -126,6 +126,7 @@ type Field interface {
 
 	json.Marshaler
 	json.Unmarshaler
+	fmt.Stringer
 }
 
 type ConsolidatedField struct {
@@ -182,7 +183,7 @@ func (cf *ConsolidatedField) Restore(fieldManager FieldCache, templateManager Te
 
 	// construct an ad-hoc information element. We don't assume it belongs to any specific registry, that's
 	// why we omit lookups here
-	ie := InformationElement{
+	ie := &InformationElement{
 		Constructor: constr,
 	}
 

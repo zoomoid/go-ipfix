@@ -101,7 +101,7 @@ func (t *Template) UnmarshalJSON(in []byte) error {
 		return nil
 	}
 	switch it.Kind {
-	case KindTemplateRecord:
+	case KindTemplateSet:
 		tr := TemplateRecord{
 			fieldCache:    t.fieldCache,
 			templateCache: t.templateCache,
@@ -111,7 +111,7 @@ func (t *Template) UnmarshalJSON(in []byte) error {
 			return err
 		}
 		t.Record = &tr
-	case KindOptionsTemplateRecord:
+	case KindOptionsTemplateSet:
 		otr := OptionsTemplateRecord{
 			fieldCache:    t.fieldCache,
 			templateCache: t.templateCache,

@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"strings"
 )
 
 type DataRecord struct {
@@ -160,12 +159,12 @@ func (dr *DataRecord) getFieldByName(enterpriseId uint32, name string) Field {
 }
 
 func (dr *DataRecord) String() string {
-	s := []string{}
+	sl := make([]string, 0, len(dr.Fields))
 	for _, v := range dr.Fields {
-		s = append(s, fmt.Sprintf("%s[%d]:%s", v.Name(), v.Id(), v.Value().String()))
+		sl = append(sl, v.String())
 	}
 
-	return fmt.Sprintf("DataRecords[%s]", strings.Join(s, " "))
+	return fmt.Sprintf("<id=%d,len=%d>%v", dr.TemplateId, dr.FieldCount, sl)
 }
 
 func (dr *DataRecord) UnmarshalJSON(in []byte) error {

@@ -36,7 +36,7 @@ type TCPListener struct {
 	listener *net.TCPListener
 }
 
-func New(bindAddr string) *TCPListener {
+func NewTCPListener(bindAddr string) *TCPListener {
 	return &TCPListener{
 		bindAddr: bindAddr,
 		packetCh: make(chan []byte, TCPChannelBufferSize),

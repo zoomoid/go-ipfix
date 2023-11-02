@@ -26,7 +26,7 @@ import (
 // being "unassigned", the enterprise ID being 0, the data type being the default IPFIX data type
 // for unknown IEs, octetArray, undefined IE semantics and undefined IE status.
 func NewUnassignedFieldBuilder(id uint16) *FieldBuilder {
-	return NewFieldBuilder(InformationElement{
+	return NewFieldBuilder(&InformationElement{
 		Name:         "unassigned",
 		Id:           id,
 		EnterpriseId: 0,

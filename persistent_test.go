@@ -36,7 +36,7 @@ func cacheFactory(file *os.File) (StatefulTemplateCache, error) {
 		if f.Id == 0 {
 			f.Id = id
 		}
-		err := fieldManager.Add(context.Background(), f)
+		err := fieldManager.Add(context.Background(), *f)
 		if err != nil {
 			return nil, err
 		}

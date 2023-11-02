@@ -23,7 +23,7 @@ import (
 	"strings"
 )
 
-func MustReadCSV(r io.Reader) map[uint16]InformationElement {
+func MustReadCSV(r io.Reader) map[uint16]*InformationElement {
 	m, err := ReadCSV(r)
 	if err != nil {
 		panic(err)
@@ -31,12 +31,12 @@ func MustReadCSV(r io.Reader) map[uint16]InformationElement {
 	return m
 }
 
-func ReadCSV(r io.Reader) (map[uint16]InformationElement, error) {
+func ReadCSV(r io.Reader) (map[uint16]*InformationElement, error) {
 	csvReader := csv.NewReader(r)
 
 	_, _ = csvReader.Read()
 
-	fieldMap := make(map[uint16]InformationElement)
+	fieldMap := make(map[uint16]*InformationElement)
 
 	for {
 		record, err := csvReader.Read()
@@ -109,7 +109,7 @@ func ReadCSV(r io.Reader) (map[uint16]InformationElement, error) {
 			field.Revision = &rev
 		}
 
-		fieldMap[uint16(id)] = field
+		fieldMap[uint16(id)] = &field
 	}
 
 	return fieldMap, nil

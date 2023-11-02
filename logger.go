@@ -17,8 +17,13 @@ limitations under the License.
 package ipfix
 
 import (
+	"bytes"
 	"context"
+	"fmt"
+	"os"
+	"runtime/debug"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -28,11 +33,8 @@ import (
 // any types, which appears unnecessary, but the implementation of delegated logging is
 // kinda neat.
 func SetLogger(l logr.Logger) {
-	loggerSetLock.Lock()
-	defer loggerSetLock.Unlock()
-
-	loggerWasSet = true
-	dlog.Fulfill(l.GetSink())
+	logFullfilled.Store(true)
+	rootLog.Fulfill(l.GetSink())
 }
 
 func FromContext(ctx context.Context, keysAndValues ...interface{}) logr.Logger {
@@ -49,24 +51,35 @@ func IntoContext(ctx context.Context, l logr.Logger) context.Context {
 	return logr.NewContext(ctx, l)
 }
 
-func init() {
-	go func() {
-		time.Sleep(30 * time.Second)
-		loggerSetLock.Lock()
-		defer loggerSetLock.Unlock()
+func eventuallyFulfillRoot() {
+	if logFullfilled.Load() {
+		return
+	}
+	if time.Since(rootLogCreated).Seconds() >= 30 {
+		if logFullfilled.CompareAndSwap(false, true) {
+			stack := debug.Stack()
+			stackLines := bytes.Count(stack, []byte{'\n'})
+			sep := []byte{'\n', '\t', '>', ' ', ' '}
 
-		if !loggerWasSet {
-			dlog.Fulfill(nullLogSink{})
+			fmt.Fprintf(os.Stderr,
+				"ipfix.SetLogger(...) was never called; logs will not be displayed.\nDetected at:%s%s", sep,
+				// prefix every line, so it's clear this is a stack trace related to the above message
+				bytes.Replace(stack, []byte{'\n'}, sep, stackLines-1),
+			)
+			SetLogger(logr.New(nullLogSink{}))
 		}
-	}()
+	}
 }
 
 var (
-	loggerSetLock sync.Mutex
-	loggerWasSet  bool
+	logFullfilled atomic.Bool
+)
 
-	dlog = newDelegatingLogSink(nullLogSink{})
-	Log  = logr.New(dlog)
+var (
+	rootLog, rootLogCreated = func() (*delegatingLogSink, time.Time) {
+		return newDelegatingLogSink(nullLogSink{}), time.Now()
+	}()
+	Log = logr.New(rootLog)
 )
 
 type nullLogSink struct{}
@@ -156,50 +169,36 @@ type delegatingLogSink struct {
 	info    logr.RuntimeInfo
 }
 
-// Init implements logr.LogSink.
 func (l *delegatingLogSink) Init(info logr.RuntimeInfo) {
+	eventuallyFulfillRoot()
 	l.lock.Lock()
 	defer l.lock.Unlock()
 	l.info = info
 }
 
-// Enabled tests whether this Logger is enabled.  For example, commandline
-// flags might be used to set the logging verbosity and disable some info
-// logs.
 func (l *delegatingLogSink) Enabled(level int) bool {
+	eventuallyFulfillRoot()
 	l.lock.RLock()
 	defer l.lock.RUnlock()
 	return l.logger.Enabled(level)
 }
 
-// Info logs a non-error message with the given key/value pairs as context.
-//
-// The msg argument should be used to add some constant description to
-// the log line.  The key/value pairs can then be used to add additional
-// variable information.  The key/value pairs should alternate string
-// keys and arbitrary values.
 func (l *delegatingLogSink) Info(level int, msg string, keysAndValues ...interface{}) {
+	eventuallyFulfillRoot()
 	l.lock.RLock()
 	defer l.lock.RUnlock()
 	l.logger.Info(level, msg, keysAndValues...)
 }
 
-// Error logs an error, with the given message and key/value pairs as context.
-// It functions similarly to calling Info with the "error" named value, but may
-// have unique behavior, and should be preferred for logging errors (see the
-// package documentations for more information).
-//
-// The msg field should be used to add context to any underlying error,
-// while the err field should be used to attach the actual error that
-// triggered this log line, if present.
 func (l *delegatingLogSink) Error(err error, msg string, keysAndValues ...interface{}) {
+	eventuallyFulfillRoot()
 	l.lock.RLock()
 	defer l.lock.RUnlock()
 	l.logger.Error(err, msg, keysAndValues...)
 }
 
-// WithName provides a new Logger with the name appended.
 func (l *delegatingLogSink) WithName(name string) logr.LogSink {
+	eventuallyFulfillRoot()
 	l.lock.RLock()
 	defer l.lock.RUnlock()
 
@@ -219,6 +218,7 @@ func (l *delegatingLogSink) WithName(name string) logr.LogSink {
 }
 
 func (l *delegatingLogSink) WithValues(tags ...interface{}) logr.LogSink {
+	eventuallyFulfillRoot()
 	l.lock.RLock()
 	defer l.lock.RUnlock()
 
@@ -238,6 +238,9 @@ func (l *delegatingLogSink) WithValues(tags ...interface{}) logr.LogSink {
 }
 
 func (l *delegatingLogSink) Fulfill(actual logr.LogSink) {
+	if actual == nil {
+		actual = nullLogSink{}
+	}
 	if l.promise != nil {
 		l.promise.Fulfill(actual)
 	}

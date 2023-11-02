@@ -51,7 +51,7 @@ type VariableLengthField struct {
 
 	decoded bool
 
-	prototype InformationElement
+	prototype *InformationElement
 }
 
 // Variable-length fields are already encoded as such, just return the field
@@ -87,7 +87,7 @@ func (f *VariableLengthField) Constructor() DataTypeConstructor {
 	return f.constructor
 }
 
-func (f *VariableLengthField) Prototype() InformationElement {
+func (f *VariableLengthField) Prototype() *InformationElement {
 	return f.prototype
 }
 
@@ -327,4 +327,31 @@ func (f *VariableLengthField) Clone() Field {
 
 		isScope: f.isScope,
 	}
+}
+
+func (f *VariableLengthField) String() string {
+	val := "nil"
+
+	if f.value != nil {
+		val = fmt.Sprintf("<%s>\"%s\"", f.value.Type(), f.value.String())
+	} else if f.constructor != nil {
+		val = fmt.Sprintf("<%s>nil", f.constructor().Type())
+	}
+
+	proto := "nil"
+	if f.prototype != nil {
+		proto = f.prototype.String()
+	}
+
+	return fmt.Sprintf("{id:%d pen:%d odid:%d name:%s length:%d variable:true reversed:%t value:%s proto:%s}",
+		f.id,
+		f.pen,
+		f.observationDomainId,
+		f.name,
+		f.Length(),
+		f.reversed,
+		val,
+		proto,
+	)
+
 }

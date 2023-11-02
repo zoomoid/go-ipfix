@@ -33,7 +33,7 @@ func TestVariableField(t *testing.T) {
 
 		tc := NewDefaultEphemeralCache()
 
-		f := NewFieldBuilder(InformationElement{
+		f := NewFieldBuilder(&InformationElement{
 			Id:          0,
 			Constructor: NewString,
 		}).

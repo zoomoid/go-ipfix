@@ -24,13 +24,6 @@ import (
 	"io"
 )
 
-type set interface {
-	Length() int
-
-	Encode(io.Writer) (int, error)
-	// Decode(io.Reader) (int, error)
-}
-
 type Set struct {
 	SetHeader `json:",inline" yaml:",inline"`
 	Kind      string `json:"kind,omitempty" yaml:"kind,omitempty"`
@@ -38,10 +31,23 @@ type Set struct {
 	Set set `json:"flow_set,omitempty"`
 }
 
+// The Kind* constants are used for unmarshalling of JSON records to denote the specific type
+// into which the elements of a set should be unmarshalled in.
+const (
+	KindDataSet            string = "DataSet"
+	KindTemplateSet        string = "TemplateSet"
+	KindOptionsTemplateSet string = "OptionsTemplateSet"
+)
+
+var _ fmt.Stringer = &Set{}
 var _ json.Marshaler = &Set{}
 var _ json.Unmarshaler = &Set{}
 
-func (fs *Set) MarshalJSON() ([]byte, error) {
+func (s *Set) String() string {
+	return fmt.Sprintf("%s<ID=%d,Records=%d>%s", s.Kind, s.Id, s.Set.Length(), s.Set)
+}
+
+func (s *Set) MarshalJSON() ([]byte, error) {
 	type ifs struct {
 		Id uint16 `json:"id,omitempty"`
 
@@ -53,14 +59,14 @@ func (fs *Set) MarshalJSON() ([]byte, error) {
 	}
 
 	t := &ifs{
-		Id:     fs.Id,
-		Length: fs.Length,
-		Kind:   fs.Kind,
+		Id:     s.Id,
+		Length: s.Length,
+		Kind:   s.Kind,
 	}
 
 	var set []byte
 	var err error
-	switch ff := fs.Set.(type) {
+	switch ff := s.Set.(type) {
 	case *DataSet:
 		set, err = json.Marshal(ff.Records)
 	case *TemplateSet:
@@ -77,25 +83,25 @@ func (fs *Set) MarshalJSON() ([]byte, error) {
 	return json.Marshal(t)
 }
 
-func (fs *Set) Encode(w io.Writer) (n int, err error) {
+func (s *Set) Encode(w io.Writer) (n int, err error) {
 	// header
 	l := make([]byte, 2)
-	binary.BigEndian.PutUint16(l, fs.SetHeader.Id)
+	binary.BigEndian.PutUint16(l, s.SetHeader.Id)
 	ln, err := w.Write(l)
 	n += ln
 	if err != nil {
 		return n, err
 	}
 	l = make([]byte, 2)
-	binary.BigEndian.PutUint16(l, fs.SetHeader.Length)
+	binary.BigEndian.PutUint16(l, s.SetHeader.Length)
 	ln, err = w.Write(l)
 	n += ln
 	if err != nil {
 		return n, err
 	}
 	// body
-	if fs.Set != nil {
-		bn, err := fs.Set.Encode(w)
+	if s.Set != nil {
+		bn, err := s.Set.Encode(w)
 		n += bn
 		if err != nil {
 			return n, err
@@ -104,7 +110,7 @@ func (fs *Set) Encode(w io.Writer) (n int, err error) {
 	return n, nil
 }
 
-func (fs *Set) UnmarshalJSON(in []byte) error {
+func (s *Set) UnmarshalJSON(in []byte) error {
 	type ifs struct {
 		SetHeader `json:",inline" yaml:",inline"`
 		Kind      string `json:"kind,omitempty" yaml:"kind,omitempty"`
@@ -120,21 +126,21 @@ func (fs *Set) UnmarshalJSON(in []byte) error {
 
 	var ff set
 	switch t.Kind {
-	case KindDataRecord:
+	case KindDataSet:
 		dfs := &DataSet{}
 		err = json.Unmarshal(t.Records, &dfs.Records)
 		if err != nil {
 			break
 		}
 		ff = dfs
-	case KindTemplateRecord:
+	case KindTemplateSet:
 		tfs := &TemplateSet{}
 		err = json.Unmarshal(t.Records, &tfs.Records)
 		if err != nil {
 			break
 		}
 		ff = tfs
-	case KindOptionsTemplateRecord:
+	case KindOptionsTemplateSet:
 		iotfs := &OptionsTemplateSet{}
 		err = json.Unmarshal(t.Records, &iotfs.Records)
 		if err != nil {
@@ -146,7 +152,7 @@ func (fs *Set) UnmarshalJSON(in []byte) error {
 		return fmt.Errorf("failed to unmarshal into Records, %w", err)
 	}
 
-	*fs = Set{
+	*s = Set{
 		SetHeader: t.SetHeader,
 		Kind:      t.Kind,
 		Set:       ff,
@@ -161,6 +167,15 @@ type DataSet struct {
 	templateCache TemplateCache
 
 	template *Template
+}
+
+func (d *DataSet) String() string {
+	sl := make([]string, 0, len(d.Records))
+	for _, dr := range d.Records {
+		sl = append(sl, dr.String())
+	}
+
+	return fmt.Sprintf("%v", sl)
 }
 
 func (d *DataSet) Length() int {
@@ -214,6 +229,14 @@ type TemplateSet struct {
 	templateCache TemplateCache
 }
 
+func (d *TemplateSet) String() string {
+	sl := make([]string, 0, len(d.Records))
+	for _, tr := range d.Records {
+		sl = append(sl, tr.String())
+	}
+	return fmt.Sprintf("%v", sl)
+}
+
 func (d *TemplateSet) Length() int {
 	return len(d.Records)
 }
@@ -254,6 +277,15 @@ type OptionsTemplateSet struct {
 	templateCache TemplateCache
 }
 
+func (d *OptionsTemplateSet) String() string {
+	ss := make([]string, 0, len(d.Records))
+	for _, otr := range d.Records {
+		ss = append(ss, otr.String())
+	}
+
+	return fmt.Sprintf("%v", ss)
+}
+
 func (d *OptionsTemplateSet) Length() int {
 	return len(d.Records)
 }
@@ -288,10 +320,11 @@ func (d *OptionsTemplateSet) Decode(r io.Reader) (n int, err error) {
 	return
 }
 
-// The Kind* constants are used for unmarshalling of JSON records to denote the specific type
-// into which the elements of a set should be unmarshalled in.
-const (
-	KindDataRecord            string = "DataRecord"
-	KindTemplateRecord        string = "TemplateRecord"
-	KindOptionsTemplateRecord string = "OptionsTemplateRecord"
-)
+type set interface {
+	fmt.Stringer
+
+	Length() int
+
+	Encode(io.Writer) (int, error)
+	// Decode(io.Reader) (int, error)
+}

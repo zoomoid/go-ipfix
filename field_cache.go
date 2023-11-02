@@ -186,7 +186,7 @@ func (fm *EphemeralFieldCache) Add(ctx context.Context, element InformationEleme
 	fk := NewFieldKey(element.EnterpriseId, element.Id)
 
 	fm.prototypes[fk] = &element
-	fm.fields[fk] = NewFieldBuilder(element).
+	fm.fields[fk] = NewFieldBuilder(&element).
 		SetFieldManager(fm).
 		SetTemplateManager(fm.templateManager).
 		SetPEN(element.EnterpriseId)
@@ -228,14 +228,14 @@ func (fm *EphemeralFieldCache) MarshalJSON() ([]byte, error) {
 	return json.Marshal(s)
 }
 
-// newIPFIXFieldManager is a utility for creating field managers with initialized IANA fields quickly,
+// NewIANAFieldManager is a utility for creating field managers with initialized IANA fields quickly,
 // e.g. for unit testing.
 //
-// newIPFIXFieldManager panics if failing to add an IE to the cache.
-func newIPFIXFieldManager(templateManager TemplateCache) FieldCache {
+// NewIANAFieldManager panics if failing to add an IE to the cache.
+func NewIANAFieldManager(templateManager TemplateCache) FieldCache {
 	fm := NewEphemeralFieldCache(templateManager)
 	for idx, ie := range IANA() {
-		err := fm.Add(context.Background(), ie)
+		err := fm.Add(context.Background(), *ie)
 		if err != nil {
 			panic(fmt.Errorf("failed to add IANA IE %d to ipfix field manager, %w", idx, err))
 		}

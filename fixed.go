@@ -43,7 +43,7 @@ type FixedLengthField struct {
 
 	isScope bool
 
-	prototype InformationElement
+	prototype *InformationElement
 }
 
 func (f *FixedLengthField) Lift() *VariableLengthField {
@@ -101,7 +101,7 @@ func (f *FixedLengthField) Constructor() DataTypeConstructor {
 	return f.constructor
 }
 
-func (f *FixedLengthField) Prototype() InformationElement {
+func (f *FixedLengthField) Prototype() *InformationElement {
 	return f.prototype
 }
 
@@ -232,4 +232,30 @@ func (f *FixedLengthField) Clone() Field {
 
 		isScope: f.isScope,
 	}
+}
+
+func (f *FixedLengthField) String() string {
+	val := "nil"
+
+	if f.value != nil {
+		val = fmt.Sprintf("<%s>\"%s\"", f.value.Type(), f.value.String())
+	} else if f.constructor != nil {
+		val = fmt.Sprintf("<%s>nil", f.constructor().Type())
+	}
+
+	proto := "nil"
+	if f.prototype != nil {
+		proto = f.prototype.String()
+	}
+
+	return fmt.Sprintf("{id:%d pen:%d odid:%d name:%s length:%d variable:false reversed:%t value:%s proto:%s}",
+		f.id,
+		f.pen,
+		f.observationDomainId,
+		f.name,
+		f.Length(),
+		f.reversed,
+		val,
+		proto,
+	)
 }

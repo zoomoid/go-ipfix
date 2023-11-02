@@ -21,6 +21,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 )
 
@@ -37,9 +38,24 @@ type OptionsTemplateRecord struct {
 }
 
 var _ templateRecord = &OptionsTemplateRecord{}
+var _ fmt.Stringer = &OptionsTemplateRecord{}
+
+func (otr *OptionsTemplateRecord) String() string {
+	scs := make([]string, 0, len(otr.Scopes))
+	for _, scope := range otr.Scopes {
+		scs = append(scs, scope.String())
+	}
+
+	os := make([]string, 0, len(otr.Options))
+	for _, option := range otr.Options {
+		os = append(os, option.String())
+	}
+
+	return fmt.Sprintf("<id=%d,len=%d>[scopes:%v options:%v]", otr.TemplateId, otr.FieldCount, scs, os)
+}
 
 func (otr *OptionsTemplateRecord) Type() string {
-	return KindOptionsTemplateRecord
+	return KindOptionsTemplateSet
 }
 
 func (otr *OptionsTemplateRecord) Id() uint16 {

@@ -18,6 +18,7 @@ package ipfix
 
 import (
 	"encoding/binary"
+	"fmt"
 	"io"
 )
 
@@ -28,6 +29,21 @@ type Message struct {
 	SequenceNumber      uint32 `json:"sequence_number,omitempty" yaml:"sequenceNumber,omitempty"`
 	ObservationDomainId uint32 `json:"observation_domain_id,omitempty" yaml:"observationDomainId,omitempty"`
 	Sets                []Set  `json:"sets,omitempty" yaml:"sets,omitempty"`
+}
+
+func (p *Message) String() string {
+	s := make([]string, 0, len(p.Sets))
+	for _, set := range p.Sets {
+		s = append(s, set.String())
+	}
+	return fmt.Sprintf("{version:%d length:%d exportTime:%d sequenceNumber:%d observationDomainId:%d sets:%v}",
+		p.Version,
+		p.Length,
+		p.ExportTime,
+		p.SequenceNumber,
+		p.ObservationDomainId,
+		s,
+	)
 }
 
 func (p *Message) Encode(w io.Writer) (int, error) {
@@ -45,7 +61,7 @@ func (p *Message) Encode(w io.Writer) (int, error) {
 		return nh, err
 	}
 
-	// packet payload
+	// message payload
 	var nb int
 	for _, fs := range p.Sets {
 		nfs, err := fs.Encode(w)
