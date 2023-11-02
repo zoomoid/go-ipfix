@@ -18,13 +18,8 @@ package ipfix
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
-)
-
-var (
-	ErrUndefinedEncoding = errors.New("undefined data type encoding")
 )
 
 type DataType interface {

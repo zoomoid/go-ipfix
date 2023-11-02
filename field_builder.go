@@ -23,7 +23,9 @@ import (
 )
 
 const (
-	FieldVariableLength uint16 = 0xFFFF
+	// VariableLength is the constant used for denoting a field being variable-length encoded
+	// in template records before the length is known.
+	VariableLength uint16 = 0xFFFF
 )
 
 type FieldBuilder struct {
@@ -95,7 +97,7 @@ func (b *FieldBuilder) Complete() Field {
 
 	decoratedConstructor := constructorBuilder.Complete()
 
-	if b.length == FieldVariableLength {
+	if b.length == VariableLength {
 		return &VariableLengthField{
 			id:                  b.prototype.Id,
 			name:                b.prototype.Name,
@@ -164,12 +166,12 @@ func (b *dataTypeBuilder) Complete() DataTypeConstructor {
 
 	// ListType and TemplateListTypes are decorated additionally with FieldCache or TemplateCache
 	switch lc := decoratedConstructor().(type) {
-	case ListType:
+	case listType:
 		decoratedConstructor = lc.
 			NewBuilder().
 			WithFieldCache(b.fieldManager).
 			Complete()
-	case TemplateListType:
+	case templateListType:
 		decoratedConstructor = lc.
 			NewBuilder().
 			WithFieldCache(b.fieldManager).

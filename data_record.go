@@ -172,7 +172,7 @@ func (dr *DataRecord) UnmarshalJSON(in []byte) error {
 		TemplateId uint16 `json:"template_id,omitempty"`
 		FieldCount uint16 `json:"field_count,omitempty"`
 
-		Fields []ConsolidatedField `json:"fields,omitempty"`
+		Fields []consolidatedField `json:"fields,omitempty"`
 	}
 
 	t := &idr{}
@@ -187,7 +187,7 @@ func (dr *DataRecord) UnmarshalJSON(in []byte) error {
 	fs := make([]Field, 0, len(t.Fields))
 	for _, cf := range t.Fields {
 		// TODO(zoomoid): check if this is ok, i.e., "we don't need the FieldManager and TemplateManager here anymore"
-		fs = append(fs, cf.Restore(nil, nil))
+		fs = append(fs, cf.restore(nil, nil))
 	}
 	dr.Fields = fs
 

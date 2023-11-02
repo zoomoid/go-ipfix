@@ -32,7 +32,7 @@ func cacheFactory(file *os.File) (StatefulTemplateCache, error) {
 	// for a field manager with loaded IPFIX fields, see pkg/collector/internal/managers/fields.go
 	fieldManager := NewEphemeralFieldCache(underlyingTemplateCache)
 
-	for id, f := range IANA() {
+	for id, f := range iana() {
 		if f.Id == 0 {
 			f.Id = id
 		}
@@ -74,7 +74,7 @@ func TestPersistentCache(t *testing.T) {
 		// cancel the context from here, which will terminate the goroutine.
 		go cache.Start(context.Background())
 
-		iana := IANA()
+		iana := iana()
 
 		tts := []TemplateRecord{
 			{
@@ -119,8 +119,8 @@ func TestPersistentCache(t *testing.T) {
 					NewFieldBuilder(iana[345]).SetLength(2).Complete(),
 					NewFieldBuilder(iana[342]).SetLength(8).Complete(),
 					NewFieldBuilder(iana[343]).SetLength(8).Complete(),
-					NewFieldBuilder(iana[341]).SetLength(FieldVariableLength).Complete(),
-					NewFieldBuilder(iana[340]).SetLength(FieldVariableLength).Complete(),
+					NewFieldBuilder(iana[341]).SetLength(VariableLength).Complete(),
+					NewFieldBuilder(iana[340]).SetLength(VariableLength).Complete(),
 				},
 			},
 		}

@@ -162,7 +162,7 @@ func (tr *TemplateRecord) decodeTemplateField(r io.Reader) (n int, err error) {
 		}
 		enterpriseId = binary.BigEndian.Uint32(b)
 
-		if enterpriseId == ReversePEN && Reversible(fieldId) {
+		if enterpriseId == ReversePEN && reversible(fieldId) {
 			reverse = true
 			// clear enterprise id, because this would obscure lookup
 			enterpriseId = 0
@@ -210,7 +210,7 @@ func (tr *TemplateRecord) UnmarshalJSON(in []byte) error {
 		TemplateId uint16 `json:"template_id,omitempty"`
 		FieldCount uint16 `json:"field_count,omitempty"`
 
-		Fields []ConsolidatedField `json:"fields,omitempty"`
+		Fields []consolidatedField `json:"fields,omitempty"`
 	}
 
 	t := &itr{}
@@ -228,7 +228,7 @@ func (tr *TemplateRecord) UnmarshalJSON(in []byte) error {
 	fs := make([]Field, 0, len(t.Fields))
 	for _, cf := range t.Fields {
 		// tr.fieldManager and tr.templateManager can still be nil
-		fs = append(fs, cf.Restore(tr.fieldCache, tr.templateCache))
+		fs = append(fs, cf.restore(tr.fieldCache, tr.templateCache))
 	}
 	tr.Fields = fs
 

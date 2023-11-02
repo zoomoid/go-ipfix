@@ -86,7 +86,7 @@ func (p *Message) Decode(r io.Reader) (int, error) {
 	p.Version = binary.BigEndian.Uint16(shortbuf)
 
 	if p.Version != 10 {
-		return carry, UnknownVersion(p.Version)
+		return carry, ErrUnknownVersion
 	}
 
 	n, err = r.Read(shortbuf)

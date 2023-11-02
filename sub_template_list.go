@@ -259,7 +259,7 @@ func (t *SubTemplateList) Encode(w io.Writer) (n int, err error) {
 	return n, err
 }
 
-func (t *SubTemplateList) NewBuilder() TemplateListTypeBuilder {
+func (t *SubTemplateList) NewBuilder() templateListeTypeBuilder {
 	return &subTemplateListBuilder{}
 }
 
@@ -312,17 +312,17 @@ type subTemplateListBuilder struct {
 	observationDomainId uint32
 }
 
-func (t *subTemplateListBuilder) WithTemplateCache(templateManager TemplateCache) TemplateListTypeBuilder {
+func (t *subTemplateListBuilder) WithTemplateCache(templateManager TemplateCache) templateListeTypeBuilder {
 	t.templateManager = templateManager
 	return t
 }
 
-func (t *subTemplateListBuilder) WithFieldCache(fieldManager FieldCache) TemplateListTypeBuilder {
+func (t *subTemplateListBuilder) WithFieldCache(fieldManager FieldCache) templateListeTypeBuilder {
 	t.fieldManager = fieldManager
 	return t
 }
 
-func (t *subTemplateListBuilder) WithObservationDomain(id uint32) TemplateListTypeBuilder {
+func (t *subTemplateListBuilder) WithObservationDomain(id uint32) templateListeTypeBuilder {
 	t.observationDomainId = id
 	return t
 }
@@ -337,6 +337,6 @@ func (t *subTemplateListBuilder) Complete() DataTypeConstructor {
 	}
 }
 
-var _ TemplateListTypeBuilder = &subTemplateListBuilder{}
-var _ TemplateListType = &SubTemplateList{}
+var _ templateListeTypeBuilder = &subTemplateListBuilder{}
+var _ templateListType = &SubTemplateList{}
 var _ DataTypeConstructor = NewDefaultSubTemplateList

@@ -237,7 +237,7 @@ func (d *Decoder) Decode(ctx context.Context, payload *bytes.Buffer) (msg *Messa
 				Set:       ds,
 			}
 		} else {
-			return msg, UnknownFlowId(h.Id)
+			return msg, ErrUnknownFlowId
 		}
 
 		d.metrics.DecodedSets++

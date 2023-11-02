@@ -22,19 +22,24 @@ import (
 )
 
 var (
+	// ErrTemplateNotFound is the base error used for indicating missing templates in caches.
+	// It may be used in errors.Is() checks for error type, whereas compound errors constructed
+	// with TemplateNotFound(...) cannot be compared with == due to including more information
 	ErrTemplateNotFound error = errors.New("template not found")
-	ErrUnknownVersion   error = errors.New("unknown version")
-	ErrUnknownFlowId    error = errors.New("unknown flow id")
+	// ErrUnknownVersion indicates an illegal version number for IPFIX in the header of the message.
+	ErrUnknownVersion error = errors.New("unknown version")
+	// ErrUnknownFlowId is used for indicating usage of a set ID unassigned in IPFIX, which is specifically
+	// the interval [5, 255], which is reserved.
+	ErrUnknownFlowId error = errors.New("unknown flow id")
+
+	// ErrIllegalDataTypeEncoding is used in Decode of certain data types that explicitly define illegal formats
+	// such as boolean (1 and 2 encoding true and false and all other values being illegal) or strings
+	// only allowing utf8 sequences.
+	ErrIllegalDataTypeEncoding = errors.New("illegal data type encoding")
 )
 
-func TemplateNotFound(observationDomainId uint32, templateId uint16) error {
+// templateNotFound wraps ErrTemplateNotFound to provide more information about _where_ the template
+// was expected to be
+func templateNotFound(observationDomainId uint32, templateId uint16) error {
 	return fmt.Errorf("%w for %d in observation domain %d", ErrTemplateNotFound, templateId, observationDomainId)
-}
-
-func UnknownVersion(version uint16) error {
-	return fmt.Errorf("%w %d, only 9 and 10 are specified", ErrUnknownVersion, version)
-}
-
-func UnknownFlowId(id uint16) error {
-	return fmt.Errorf("%w %d", ErrUnknownFlowId, id)
 }

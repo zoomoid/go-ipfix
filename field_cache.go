@@ -90,11 +90,11 @@ func NewFieldKey(enterpriseId uint32, fieldId uint16) FieldKey {
 }
 
 const (
-	FieldKeySeparator string = ":"
+	fieldKeySeparator string = ":"
 )
 
 func (k *FieldKey) String() string {
-	return fmt.Sprintf("%d%s%d", k.EnterpriseId, FieldKeySeparator, k.Id)
+	return fmt.Sprintf("%d%s%d", k.EnterpriseId, fieldKeySeparator, k.Id)
 }
 
 func (k *FieldKey) MarshalText() (text []byte, err error) {
@@ -106,7 +106,7 @@ func (k *FieldKey) Unmarshal(text string) (err error) {
 	var enterpriseId uint32
 	var fieldId uint16
 
-	key := strings.Split(text, FieldKeySeparator)
+	key := strings.Split(text, fieldKeySeparator)
 	if len(key) != 2 {
 		return errors.New("template key format is invalid")
 	}
@@ -234,7 +234,7 @@ func (fm *EphemeralFieldCache) MarshalJSON() ([]byte, error) {
 // NewIANAFieldManager panics if failing to add an IE to the cache.
 func NewIANAFieldManager(templateManager TemplateCache) FieldCache {
 	fm := NewEphemeralFieldCache(templateManager)
-	for idx, ie := range IANA() {
+	for idx, ie := range iana() {
 		err := fm.Add(context.Background(), *ie)
 		if err != nil {
 			panic(fmt.Errorf("failed to add IANA IE %d to ipfix field manager, %w", idx, err))

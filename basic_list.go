@@ -257,7 +257,7 @@ func (t *BasicList) Decode(r io.Reader) (n int, err error) {
 		enterpriseId = binary.BigEndian.Uint32(b)
 
 		t.pen = enterpriseId
-		if enterpriseId == ReversePEN && Reversible(fieldId) {
+		if enterpriseId == ReversePEN && reversible(fieldId) {
 			reverse = true
 			// clear enterprise id, because this would obscure lookup
 			enterpriseId = 0
@@ -452,7 +452,7 @@ func (t *BasicList) UnmarshalJSON(in []byte) error {
 	return nil
 }
 
-func (t *BasicList) NewBuilder() ListTypeBuilder {
+func (t *BasicList) NewBuilder() listTypeBuilder {
 	return &basicListBuilder{}
 }
 
@@ -460,7 +460,7 @@ type basicListBuilder struct {
 	fieldManager FieldCache
 }
 
-func (t *basicListBuilder) WithFieldCache(fieldManager FieldCache) ListTypeBuilder {
+func (t *basicListBuilder) WithFieldCache(fieldManager FieldCache) listTypeBuilder {
 	t.fieldManager = fieldManager
 	return t
 }
@@ -473,6 +473,6 @@ func (t *basicListBuilder) Complete() DataTypeConstructor {
 	}
 }
 
-var _ ListType = &BasicList{}
+var _ listType = &BasicList{}
 
 var _ DataTypeConstructor = NewBasicList

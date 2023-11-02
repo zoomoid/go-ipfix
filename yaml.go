@@ -23,7 +23,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-type FieldExport struct {
+type fieldExport struct {
 	Name            string
 	ExportTimestamp time.Time
 
@@ -42,7 +42,7 @@ func ReadYAML(r io.Reader) (map[uint16]*InformationElement, error) {
 	dec := yaml.NewDecoder(r)
 	dec.KnownFields(true)
 
-	read := FieldExport{}
+	read := fieldExport{}
 	err := dec.Decode(&read)
 	if err != nil {
 		return nil, err
@@ -75,7 +75,7 @@ func WriteYAML(w io.Writer, m map[uint16]*InformationElement) error {
 	enc := yaml.NewEncoder(w)
 	enc.SetIndent(2)
 
-	err := enc.Encode(FieldExport{
+	err := enc.Encode(fieldExport{
 		ExportTimestamp: time.Now(),
 		Name:            "IP Flow Information Export (IPFIX) Entities",
 		Fields:          fields,

@@ -195,7 +195,7 @@ func (f *VariableLengthField) Value() DataType {
 }
 
 func (f *VariableLengthField) Reversible() bool {
-	_, nonReversible := nonReversibleFields[f.id]
+	_, nonReversible := NonReversibleFields[f.id]
 	return !nonReversible
 }
 
@@ -255,12 +255,12 @@ func (f *VariableLengthField) IsScope() bool {
 	return f.isScope
 }
 
-func (f *VariableLengthField) Consolidate() ConsolidatedField {
+func (f *VariableLengthField) consolidate() consolidatedField {
 	pen := f.pen
 	if f.reversed {
 		pen = ReversePEN
 	}
-	cf := ConsolidatedField{
+	cf := consolidatedField{
 		Id:                  f.Id(),
 		Name:                f.Name(), // this *can* include "reversed", which is then (partially) used by Restore to fully restore the semantics
 		IsVariableLength:    true,
@@ -279,17 +279,17 @@ func (f *VariableLengthField) Consolidate() ConsolidatedField {
 }
 
 func (f *VariableLengthField) MarshalJSON() ([]byte, error) {
-	cf := f.Consolidate()
+	cf := f.consolidate()
 	return json.Marshal(cf)
 }
 
 func (f *VariableLengthField) UnmarshalJSON(in []byte) error {
-	cf := &ConsolidatedField{}
+	cf := &consolidatedField{}
 	err := json.Unmarshal(in, cf)
 	if err != nil {
 		return err
 	}
-	tvlf, ok := cf.Restore(f.fieldManager, f.templateManager).(*VariableLengthField)
+	tvlf, ok := cf.restore(f.fieldManager, f.templateManager).(*VariableLengthField)
 	if !ok {
 		return fmt.Errorf("could not unmarshal field to variable length field")
 	}
@@ -304,28 +304,21 @@ func (f *VariableLengthField) Clone() Field {
 	}
 
 	return &VariableLengthField{
-		value: ndt,
-
-		id:   f.id,
-		name: f.name,
-		pen:  f.pen,
-
-		constructor: f.constructor,
-
-		prototype: f.prototype,
-
-		reversed: f.reversed,
-
-		decoded:          f.decoded,
-		longLengthFormat: f.longLengthFormat,
-		length:           f.length,
-
+		id:                  f.id,
+		name:                f.name,
+		pen:                 f.pen,
+		reversed:            f.reversed,
+		decoded:             f.decoded,
+		longLengthFormat:    f.longLengthFormat,
+		length:              f.length,
 		observationDomainId: f.observationDomainId,
+		isScope:             f.isScope,
 
+		value:           ndt,
+		constructor:     f.constructor,
+		prototype:       f.prototype,
 		fieldManager:    f.fieldManager,
 		templateManager: f.templateManager,
-
-		isScope: f.isScope,
 	}
 }
 

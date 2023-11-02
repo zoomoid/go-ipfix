@@ -22,7 +22,7 @@ import (
 )
 
 func TestTemplate(t *testing.T) {
-	iana := IANA()
+	iana := iana()
 
 	templates := []Template{
 		{
@@ -68,8 +68,8 @@ func TestTemplate(t *testing.T) {
 					NewFieldBuilder(iana[345]).SetLength(2).Complete(),
 					NewFieldBuilder(iana[342]).SetLength(8).Complete(),
 					NewFieldBuilder(iana[343]).SetLength(8).Complete(),
-					NewFieldBuilder(iana[341]).SetLength(FieldVariableLength).Complete(),
-					NewFieldBuilder(iana[340]).SetLength(FieldVariableLength).Complete(),
+					NewFieldBuilder(iana[341]).SetLength(VariableLength).Complete(),
+					NewFieldBuilder(iana[340]).SetLength(VariableLength).Complete(),
 				},
 			},
 		},

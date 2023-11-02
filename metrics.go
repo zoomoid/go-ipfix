@@ -47,3 +47,33 @@ var (
 		Help:      "Total number of records dropped due to filters per type",
 	}, []string{"type"})
 )
+
+var (
+	TCPActiveConnections = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "tcp_listener_active_connections_total",
+		Help: "Total number of active connections currently maintained by the TCP listener",
+	})
+	TCPErrorsTotal = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "tcp_listener_errors_total",
+		Help: "Total number of errors encountered in the TCP listener",
+	})
+	TCPReceivedBytes = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "tcp_listener_received_bytes",
+		Help: "Total number of bytes read in the TCP listener",
+	})
+)
+
+var (
+	UDPPacketsTotal = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "udp_listener_packets_total",
+		Help: "Total number of packets received via UDP listener",
+	})
+	UDPErrorsTotal = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "udp_listener_errors_total",
+		Help: "Total number of errors encountered in the UDP listener",
+	})
+	UDPPacketBytes = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "udp_listener_packet_bytes",
+		Help: "Total number of bytes read in the UDP listener",
+	})
+)

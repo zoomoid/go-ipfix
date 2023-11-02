@@ -37,7 +37,7 @@ func TestVariableField(t *testing.T) {
 			Id:          0,
 			Constructor: NewString,
 		}).
-			SetLength(FieldVariableLength).
+			SetLength(VariableLength).
 			SetTemplateManager(tc).
 			SetFieldManager(NewEphemeralFieldCache(tc)).
 			Complete()

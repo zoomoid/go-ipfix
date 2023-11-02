@@ -98,7 +98,7 @@ func (t *Boolean) Decode(in io.Reader) (int, error) {
 	} else if v == 2 {
 		t.value = false
 	} else {
-		return n, fmt.Errorf("failed to decode %T, %w", t, ErrUndefinedEncoding)
+		return n, fmt.Errorf("failed to decode %T, %w", t, ErrIllegalDataTypeEncoding)
 	}
 	return n, nil
 }

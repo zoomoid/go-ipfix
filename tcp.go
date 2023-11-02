@@ -24,8 +24,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 type TCPListener struct {
@@ -39,7 +37,7 @@ type TCPListener struct {
 func NewTCPListener(bindAddr string) *TCPListener {
 	return &TCPListener{
 		bindAddr: bindAddr,
-		packetCh: make(chan []byte, TCPChannelBufferSize),
+		packetCh: make(chan []byte, tcpChannelBufferSize),
 	}
 }
 
@@ -146,22 +144,7 @@ func (l *TCPListener) Messages() <-chan []byte {
 }
 
 var (
-	TCPActiveConnections = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "tcp_listener_active_connections_total",
-		Help: "Total number of active connections currently maintained by the TCP listener",
-	})
-	TCPErrorsTotal = prometheus.NewCounter(prometheus.CounterOpts{
-		Name: "tcp_listener_errors_total",
-		Help: "Total number of errors encountered in the TCP listener",
-	})
-	TCPReceivedBytes = prometheus.NewCounter(prometheus.CounterOpts{
-		Name: "tcp_listener_received_bytes",
-		Help: "Total number of bytes read in the TCP listener",
-	})
-)
-
-var (
-	TCPChannelBufferSize int = 10
+	tcpChannelBufferSize int = 10
 
 	// ipfixMessageHeaderLength is the number of bytes in an IPFIX packet header
 	ipfixMessageHeaderLength uint16 = 16

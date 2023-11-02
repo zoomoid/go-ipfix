@@ -79,7 +79,7 @@ func (ts *DecayingEphemeralCache) Get(ctx context.Context, key TemplateKey) (*Te
 
 	te, ok := ts.templates[key]
 	if !ok {
-		return nil, TemplateNotFound(key.ObservationDomainId, key.TemplateId)
+		return nil, templateNotFound(key.ObservationDomainId, key.TemplateId)
 	}
 
 	if te.expired {

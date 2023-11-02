@@ -49,7 +49,7 @@ func TestMessage_String(t *testing.T) {
 										pen:              12345,
 										fieldId:          5,
 										isEnterprise:     true,
-										elementLength:    FieldVariableLength,
+										elementLength:    VariableLength,
 										length:           3,
 										value: []Field{
 											helloWorldField.Clone().SetValue("hello world 2"),

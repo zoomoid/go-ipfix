@@ -120,11 +120,11 @@ func NewKey(observationDomainId uint32, templateId uint16) TemplateKey {
 }
 
 const (
-	TemplateKeySeparator string = "-"
+	templateKeySeparator string = "-"
 )
 
 func (k *TemplateKey) String() string {
-	return fmt.Sprintf("%d%s%d", k.ObservationDomainId, TemplateKeySeparator, k.TemplateId)
+	return fmt.Sprintf("%d%s%d", k.ObservationDomainId, templateKeySeparator, k.TemplateId)
 }
 
 func (k *TemplateKey) MarshalText() (text []byte, err error) {
@@ -136,7 +136,7 @@ func (k *TemplateKey) Unmarshal(text string) (err error) {
 	var observationDomainId uint32
 	var templateId uint16
 
-	key := strings.Split(text, TemplateKeySeparator)
+	key := strings.Split(text, templateKeySeparator)
 	if len(key) != 2 {
 		return errors.New("template key format is invalid")
 	}

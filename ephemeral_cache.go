@@ -64,7 +64,7 @@ func (ts *EphemeralCache) Get(ctx context.Context, key TemplateKey) (*Template, 
 
 	template, ok := ts.templates[key]
 	if !ok {
-		return nil, TemplateNotFound(key.ObservationDomainId, key.TemplateId)
+		return nil, templateNotFound(key.ObservationDomainId, key.TemplateId)
 	}
 	return template, nil
 }

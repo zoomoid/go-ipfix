@@ -96,15 +96,15 @@ func (t *DateTimeMicroseconds) Decode(in io.Reader) (int, error) {
 	t.seconds = binary.BigEndian.Uint32(b[0 : t.Length()/2])
 	// reading the fractional part while also masking the lower 11 bits as per RFC 7011#6.1.9
 	t.fraction = float64(binary.BigEndian.Uint32(b[t.Length()/2:t.Length()])&0xFFFFF800) / math.Pow(2, 32)
-	t.value = NTPEpoch.Add(time.Duration(t.seconds) * time.Second).Add(time.Duration(t.fraction) * time.Second)
+	t.value = ntpEpoch.Add(time.Duration(t.seconds) * time.Second).Add(time.Duration(t.fraction) * time.Second)
 	return n, nil
 }
 
 func (t *DateTimeMicroseconds) Encode(w io.Writer) (int, error) {
 	b := make([]byte, 0)
 
-	seconds := uint32(t.value.Sub(NTPEpoch).Seconds())
-	fraction := t.value.Sub(NTPEpoch).Seconds() - float64(seconds)
+	seconds := uint32(t.value.Sub(ntpEpoch).Seconds())
+	fraction := t.value.Sub(ntpEpoch).Seconds() - float64(seconds)
 
 	b = binary.BigEndian.AppendUint32(b, seconds)
 	fr := uint32(fraction*math.Pow(2, 32)) & 0xFFFFF800

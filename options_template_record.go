@@ -174,7 +174,7 @@ func (otr *OptionsTemplateRecord) decodeTemplateField(r io.Reader) (f Field, n i
 		}
 		enterpriseId = binary.BigEndian.Uint32(b)
 
-		if enterpriseId == ReversePEN && Reversible(fieldId) {
+		if enterpriseId == ReversePEN && reversible(fieldId) {
 			reverse = true
 			// clear enterprise id, because this would obscure lookup
 			enterpriseId = 0
@@ -285,8 +285,8 @@ func (otr *OptionsTemplateRecord) UnmarshalJSON(in []byte) error {
 		FieldCount      uint16 `json:"fieldCount,omitempty" yaml:"fieldCount,omitempty"`
 		ScopeFieldCount uint16 `json:"scopeFieldCount,omitempty" yaml:"scopeFieldCount,omitempty"`
 
-		Scopes  []ConsolidatedField `json:"scopes,omitempty"`
-		Options []ConsolidatedField `json:"options,omitempty"`
+		Scopes  []consolidatedField `json:"scopes,omitempty"`
+		Options []consolidatedField `json:"options,omitempty"`
 	}
 
 	t := &iotr{}
@@ -309,14 +309,14 @@ func (otr *OptionsTemplateRecord) UnmarshalJSON(in []byte) error {
 	ss := make([]Field, 0, len(t.Scopes))
 	for _, cf := range t.Scopes {
 		// TODO(zoomoid): check if this is ok, i.e., "we don't need the FieldManager and TemplateManager here anymore"
-		ss = append(ss, cf.Restore(otr.fieldCache, otr.templateCache))
+		ss = append(ss, cf.restore(otr.fieldCache, otr.templateCache))
 	}
 	otr.Scopes = ss
 
 	os := make([]Field, 0, len(t.Options))
 	for _, cf := range t.Scopes {
 		// TODO(zoomoid): check if this is ok, i.e., "we don't need the FieldManager and TemplateManager here anymore"
-		os = append(os, cf.Restore(otr.fieldCache, otr.templateCache))
+		os = append(os, cf.restore(otr.fieldCache, otr.templateCache))
 	}
 	otr.Options = os
 

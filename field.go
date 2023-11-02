@@ -119,17 +119,17 @@ type Field interface {
 
 	BidirectionalField
 
-	// Consolidate converts the field into a value easily serialized, i.e., by
+	// consolidate converts the field into a value easily serialized, i.e., by
 	// removing functions and encoding whether the field is a fixed length or
 	// variable length variant.
-	Consolidate() ConsolidatedField
+	consolidate() consolidatedField
 
 	json.Marshaler
 	json.Unmarshaler
 	fmt.Stringer
 }
 
-type ConsolidatedField struct {
+type consolidatedField struct {
 	Id   uint16 `json:"id"`
 	Name string `json:"name,omitempty"`
 
@@ -157,28 +157,17 @@ type ConsolidatedField struct {
 	IsScope bool `json:"is_scope,omitempty"`
 }
 
-// var _ json.Unmarshaler = &ConsolidatedField{}
-// var _ json.Marshaler = &ConsolidatedField{}
-
-// func (cf *ConsolidatedField) MarshalJSON() ([]byte, error) {
-// 	return json.Marshal(cf)
-// }
-
-// func (cf *ConsolidatedField) UnmarshalJSON(in []byte) error {
-// 	return json.Unmarshal(in, cf)
-// }
-
 var dataTypesWithListSemantics map[string]struct{} = map[string]struct{}{
 	(&BasicList{}).Type():            {},
 	(&SubTemplateList{}).Type():      {},
 	(&SubTemplateMultiList{}).Type(): {},
 }
 
-// Restore creates a Field from a ConsolidatedField again, by deciding whether to use an
+// restore creates a Field from a consolidatedField again, by deciding whether to use an
 // underlying variable length or fixed length struct.
-// Restore also recreates the constructor function from the type string left on the
-// Consolidated field, as well as restoring the internal value of a DataType
-func (cf *ConsolidatedField) Restore(fieldManager FieldCache, templateManager TemplateCache) Field {
+// restore also recreates the constructor function from the type string left on the
+// consolidatedField, as well as restoring the internal value of a DataType
+func (cf *consolidatedField) restore(fieldManager FieldCache, templateManager TemplateCache) Field {
 	constr := LookupConstructor(cf.Type)
 
 	// construct an ad-hoc information element. We don't assume it belongs to any specific registry, that's

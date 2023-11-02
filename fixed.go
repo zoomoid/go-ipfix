@@ -155,21 +155,21 @@ func (f *FixedLengthField) IsScope() bool {
 }
 
 func (f *FixedLengthField) Reversible() bool {
-	return Reversible(f.id)
+	return reversible(f.id)
 }
 
 func (f *FixedLengthField) Reversed() bool {
 	return f.reversed
 }
 
-// Consolidate converts the FixedLengthField into a format this is easily marshalled
+// consolidate converts the FixedLengthField into a format this is easily marshalled
 // to JSON or other serial formats. Mainly it replaces the function component
-func (f *FixedLengthField) Consolidate() ConsolidatedField {
+func (f *FixedLengthField) consolidate() consolidatedField {
 	pen := f.pen
 	if f.reversed {
 		pen = ReversePEN
 	}
-	cf := ConsolidatedField{
+	cf := consolidatedField{
 		Id:                  f.Id(),
 		Name:                f.Name(),
 		IsVariableLength:    false,
@@ -188,17 +188,17 @@ func (f *FixedLengthField) Consolidate() ConsolidatedField {
 }
 
 func (f *FixedLengthField) MarshalJSON() ([]byte, error) {
-	cf := f.Consolidate()
+	cf := f.consolidate()
 	return json.Marshal(cf)
 }
 
 func (f *FixedLengthField) UnmarshalJSON(in []byte) error {
-	cf := &ConsolidatedField{}
+	cf := &consolidatedField{}
 	err := json.Unmarshal(in, cf)
 	if err != nil {
 		return err
 	}
-	tflf, ok := cf.Restore(f.fieldManager, f.templateManager).(*FixedLengthField)
+	tflf, ok := cf.restore(f.fieldManager, f.templateManager).(*FixedLengthField)
 	if !ok {
 		return fmt.Errorf("could not unmarshal field to variable length field")
 	}
@@ -213,24 +213,18 @@ func (f *FixedLengthField) Clone() Field {
 	}
 
 	return &FixedLengthField{
-		value: ndt,
-
-		id:   f.id,
-		name: f.name,
-		pen:  f.pen,
-
-		constructor: f.constructor,
-
-		prototype: f.prototype,
-
+		id:       f.id,
+		name:     f.name,
+		pen:      f.pen,
+		isScope:  f.isScope,
 		reversed: f.reversed,
 
+		value:               ndt,
+		constructor:         f.constructor,
+		prototype:           f.prototype,
 		observationDomainId: f.observationDomainId,
-
-		fieldManager:    f.fieldManager,
-		templateManager: f.templateManager,
-
-		isScope: f.isScope,
+		fieldManager:        f.fieldManager,
+		templateManager:     f.templateManager,
 	}
 }
 

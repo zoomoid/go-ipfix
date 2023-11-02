@@ -22,7 +22,6 @@ import (
 	"net"
 	"syscall"
 
-	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/sys/unix"
 )
 
@@ -46,7 +45,7 @@ var (
 	// packet buffering from UDP socket to the user space, which alleviates most
 	// packet loss issues, but also drastically increases memory usage, in face of
 	// 64kbytes allocated per packet.
-	UDPChannelBufferSize int = 50
+	udpChannelBufferSize int = 50
 )
 
 type UDPListener struct {
@@ -60,7 +59,7 @@ type UDPListener struct {
 func NewUDPListener(bindAddr string) *UDPListener {
 	return &UDPListener{
 		bindAddr: bindAddr,
-		packetCh: make(chan []byte, UDPChannelBufferSize),
+		packetCh: make(chan []byte, udpChannelBufferSize),
 	}
 }
 
@@ -136,18 +135,3 @@ func (l *UDPListener) Listen(ctx context.Context) (err error) {
 func (l *UDPListener) Messages() <-chan []byte {
 	return l.packetCh
 }
-
-var (
-	UDPPacketsTotal = prometheus.NewCounter(prometheus.CounterOpts{
-		Name: "udp_listener_packets_total",
-		Help: "Total number of packets received via UDP listener",
-	})
-	UDPErrorsTotal = prometheus.NewCounter(prometheus.CounterOpts{
-		Name: "udp_listener_errors_total",
-		Help: "Total number of errors encountered in the UDP listener",
-	})
-	UDPPacketBytes = prometheus.NewCounter(prometheus.CounterOpts{
-		Name: "udp_listener_packet_bytes",
-		Help: "Total number of bytes read in the UDP listener",
-	})
-)

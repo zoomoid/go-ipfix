@@ -28,7 +28,9 @@ import "strings"
 // illegaly used the reverse PEN on a field that is not reversible.
 const ReversePEN uint32 = 29305
 
-var nonReversibleFields map[uint16]InformationElement = map[uint16]InformationElement{
+// NonReversibleFields is the lookup map for fields that are _not_ reversible as per RFC 5103.
+// Authoritative information is found in https://datatracker.ietf.org/doc/html/rfc5103
+var NonReversibleFields map[uint16]InformationElement = map[uint16]InformationElement{
 	// identifiers per https://datatracker.ietf.org/doc/html/rfc5102#section-5.1
 	10: {
 		Id:   10,
@@ -164,9 +166,9 @@ var nonReversibleFields map[uint16]InformationElement = map[uint16]InformationEl
 	},
 }
 
-// Reversible looks up an IEs membership in the list of irreversible IEs
-func Reversible(fieldId uint16) bool {
-	_, nonReversible := nonReversibleFields[fieldId]
+// reversible looks up an IEs membership in the list of irreversible IEs
+func reversible(fieldId uint16) bool {
+	_, nonReversible := NonReversibleFields[fieldId]
 	return !nonReversible
 }
 

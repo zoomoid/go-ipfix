@@ -47,10 +47,6 @@ func FromContext(ctx context.Context, keysAndValues ...interface{}) logr.Logger 
 	return log.WithValues(keysAndValues...)
 }
 
-func IntoContext(ctx context.Context, l logr.Logger) context.Context {
-	return logr.NewContext(ctx, l)
-}
-
 func eventuallyFulfillRoot() {
 	if logFullfilled.Load() {
 		return

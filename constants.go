@@ -36,7 +36,7 @@ func initGlobalIANARegistry() {
 	ianaIpfixIEs = MustReadCSV(mustReadFile(spec.ReadFile("hack/ipfix-information-elements.csv")))
 }
 
-func IANA() map[uint16]*InformationElement {
+func iana() map[uint16]*InformationElement {
 	if len(ianaIpfixIEs) == 0 {
 		initGlobalIANARegistry()
 	}
