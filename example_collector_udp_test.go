@@ -12,6 +12,8 @@ import (
 	"github.com/zoomoid/go-ipfix"
 )
 
+// Collect IPFIX messages via UDP listener. The example is exactly the same as the TCP example, except
+// for the transport protocol used. For more description see the TCP collector example.
 func Example_collectorUDP() {
 	var (
 		BindAddr string = "[::]:4739"

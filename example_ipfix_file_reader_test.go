@@ -10,6 +10,9 @@ import (
 	"github.com/zoomoid/go-ipfix"
 )
 
+// A simple decoder of IPFIX messages read from a file. The example uses the
+// IPFIXFileReader, which asserts the file must contain IPFIX messages according
+// to RFC 5655.
 func Example_ipfixFileReader() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

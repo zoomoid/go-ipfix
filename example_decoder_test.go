@@ -10,6 +10,11 @@ import (
 	"github.com/zoomoid/go-ipfix"
 )
 
+// A simple decoder of IPFIX messages read from a file. The example uses the
+// IPFIXFileReader, which asserts the file must contain IPFIX messages according
+// to RFC 5655.
+// The decoder is fed with messages from the reader the same way we previously did in
+// the TCP and UDP listener example, using a indefinitely running goroutine with message channels.
 func Example_decoder() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

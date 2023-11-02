@@ -10,6 +10,16 @@ import (
 	"github.com/zoomoid/go-ipfix"
 )
 
+// Transforms IPFIX messages containing more than one record and template set per message into
+// a stream of messages that only contain one record in one typed set per message.
+// Note that while this obviously includes a lot of overhead, it is helpful in scenarios where
+// we want _individual records_ to end up in a hypothetical database, because queries and filters
+// are much easier implemented, and the grouping of records in homogeneous sets is mostly only
+// done for reducing message overhead from redundancy.
+// In practice, due to the possibly complex timing of flow records, sets often only contain single
+// records anyways and rarely do messages contain more than one set.
+// Software exporters such as yaf behave differently in terms of message packing when writing
+// to files or sending via TCP or UDP. To ease this difference, normalization appears reasonable.
 func Example_transformerNormalizeRecords() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

@@ -12,6 +12,12 @@ import (
 	"github.com/zoomoid/go-ipfix"
 )
 
+// Collect IPFIX messages via TCP listener. The code's layout is idiomatic of the package:
+// Consume messages in a goroutine from a channel and use a Decoder instance to create
+// message objects to work with.
+// The example code simply logs the messages to Stdout. Other use-cases might be forwarding
+// these objects in a stateless format, e.g., JSON or Protobuf, to a message queue, such as Kafka
+// (this is what similar Go libraries such as goflow2 and vflow) do.
 func Example_collectorTCP() {
 	var (
 		BindAddr string = "[::]:4739"
